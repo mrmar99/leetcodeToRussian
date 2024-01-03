@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "LeetCode to Russian",
   "description": "Translate LeetCode Problems to Russian",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "action": {
     "default_popup": "hello.html",
     "default_icon": "hello_extensions.png"

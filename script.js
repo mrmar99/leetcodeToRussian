@@ -30,9 +30,11 @@ class UIEditor {
     const currTitle = document.querySelector('.text-title-large');
     const currDescription = document.querySelector('[data-track-load="description_content"]');
 
-    currTitle.nextElementSibling.remove();
-    currTitle.parentNode.replaceChild(this.engTitle, currTitle);
-    currDescription.parentNode.replaceChild(this.engDescription, currDescription);
+    if (currTitle !== this.engTitle) {
+      currTitle.nextElementSibling.remove();
+      currTitle.parentNode.replaceChild(this.engTitle, currTitle);
+      currDescription.parentNode.replaceChild(this.engDescription, currDescription);
+    }
   }
 
   changeTitle(rusTitle) {
