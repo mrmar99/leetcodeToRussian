@@ -14,6 +14,8 @@ class UIEditor {
   constructor(rusTitle, rusDescription) {
     if (arguments.length < 2) throw new Error("Необходимо передать все аргументы");
 
+    this.isRussian = false;
+
     this.rusTitle = rusTitle;
     this.rusDescription = rusDescription;
 
@@ -22,18 +24,21 @@ class UIEditor {
   }
 
   setRus() {
-    this.changeTitle(this.rusTitle);
-    this.changeDescription(this.rusDescription);
+    if (!this.isRussian) {
+      this.changeTitle(this.rusTitle);
+      this.changeDescription(this.rusDescription);
+      this.isRussian = true;
+    }
   }
 
   setEng() {
-    const currTitle = document.querySelector('.text-title-large');
-    const currDescription = document.querySelector('[data-track-load="description_content"]');
-
-    if (currTitle !== this.engTitle) {
+    if (this.isRussian) {
+      const currTitle = document.querySelector('.text-title-large');
+      const currDescription = document.querySelector('[data-track-load="description_content"]');
       currTitle.nextElementSibling.remove();
       currTitle.parentNode.replaceChild(this.engTitle, currTitle);
       currDescription.parentNode.replaceChild(this.engDescription, currDescription);
+      this.isRussian = false;
     }
   }
 
