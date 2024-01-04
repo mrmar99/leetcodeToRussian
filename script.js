@@ -12,7 +12,6 @@ async function main() {
 
     const id = parseInt(title.textContent);
     const t = await getTranslation(id);
-    console.log(t)
     if (t) {
       const { rusTitle, description } = t;
       const ui = new UIEditor(rusTitle, description);
@@ -61,6 +60,12 @@ class UIEditor {
 
     this.engTitle = document.querySelector('.text-title-large');
     this.engDescription = document.querySelector('[data-track-load="description_content"]');
+    this.descriptionImages = {};
+    for (let i = 0; i < this.engDescription.children.length; i++) {
+      if (this.engDescription.children[i].tagName === "IMG") {
+        this.descriptionImages[i] = this.engDescription.children[i];
+      }
+    }
   }
 
   setRus() {
@@ -103,7 +108,15 @@ class UIEditor {
   
   changeDescription(rusDescription) {
     const description = this.engDescription.cloneNode(true);
-    this.engDescription.innerHTML = rusDescription;
+    const tmpEl = document.createElement('div');
+    tmpEl.innerHTML = rusDescription;
+
+    for (const i in this.descriptionImages) {
+      const img = this.descriptionImages[i];
+      tmpEl.insertBefore(img, tmpEl.children[i]);
+    }
+
+    this.engDescription.innerHTML = tmpEl.innerHTML;
     this.engDescription = description;
   }
 }
