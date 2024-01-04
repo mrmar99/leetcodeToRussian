@@ -1,0 +1,7 @@
+{
+  "1": {
+    "name": "Two Sum",
+    "rusTitle": "Сумма двух",
+    "content": "<p>Дан массив целочисленных значений <code>nums</code> и целое число <code>target</code>, верните индексы двух элементов, которые в сумме дают <code>target</code>.</p><p>Вы можете предполагать, что каждый вход будет иметь <strong>только одно решение</strong>, а также вы не можете использовать один и тот же элемент дважды.</p><p>Ответ можно вернуть в любом порядке.</p><p><strong>Пример 1:</strong></p><pre><strong>Вход:</strong> nums = [2,7,11,15], target = 9 <strong>Выход:</strong> [0,1] Пояснение: Так как nums[0] + nums[1] == 9, мы возвращаем [0, 1].</pre><p><strong>Пример 2:</strong></p><pre><strong>Вход:</strong> nums = [3,2,4], target = 6 <strong>Выход:</strong> [1,2]</pre><p><strong>Пример 3:</strong></p><pre><strong>Вход:</strong> nums = [3,3], target = 6 <strong>Выход:</strong> [0,1]</pre><p><strong>Ограничения:</strong></p><p><code>2 &lt;= nums.length &lt;= 104</code><code>-109 &lt;= nums[i] &lt;= 109</code><code>-109 &lt;= target &lt;= 109</code></p><p>Существует только один ответ.</p><p><strong>Самопроверка:</strong> Можете ли вы придумать алгоритм с временной сложностью менее O(n^2)?</p>"
+  }
+}
