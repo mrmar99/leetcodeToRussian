@@ -14,11 +14,11 @@ async function main() {
     const t = await getTranslation(id);
     console.log(t)
     if (t) {
-      const { rusTitle, content } = t;
-      const ui = new UIEditor(rusTitle, content);
+      const { rusTitle, description } = t;
+      const ui = new UIEditor(rusTitle, description);
       ui.setRus();
     
-      setTimeout(() => ui.setEng(), 8000);
+      // setTimeout(() => ui.setEng(), 8000);
     } else {
       console.log("Эта задача еще не переведена");
     }
