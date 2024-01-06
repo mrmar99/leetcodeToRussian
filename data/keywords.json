@@ -1,7 +1,14 @@
 {
   "subsequence-array": {
-    "name": "Subsequence",
     "rusName": "Подпоследовательность",
     "description": "<p><strong>Подпоследовательность</strong> массива <code>a</code> - это массив, который можно получить из массива <code>a</code> путем удаления от <code>0</code> до <code>a.length</code> элементов без изменения порядка элементов.</p>"
+  },
+  "palindromic-string": {
+    "rusName": "Палиндром",
+    "description": "<p>Строка является <strong>палиндромом</strong>, если она читается одинаково как слева направо, так и справа налево.</p>"
+  },
+  "substring-nonempty": {
+    "rusName": "Подстрока",
+    "description": "<p><strong>Подстрока</strong> — это непрерывная непустая последовательность символов внутри строки.</p>"
   }
 }
