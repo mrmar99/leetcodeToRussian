@@ -23,5 +23,10 @@
     "title": "Contains Duplicate",
     "rusTitle": "Содержит дубликат",
     "description": "<p>Дан целочисленный массив <code>nums</code>, верните <code>true</code>, если любое из значений встречается в массиве <strong>как минимум дважды</strong>, иначе верните <code>false</code>, если все значения в массиве различны.</p>\n\n<p>&nbsp;</p>\n\n<p><strong>Пример 1:</strong></p>\n<pre><strong>Ввод:</strong> nums = [1,2,3,1]\n<strong>Вывод:</strong> true</pre>\n   \n<p><strong>Пример 2:</strong></p>\n<pre><strong>Ввод:</strong> nums = [1,2,3,4]\n<strong>Вывод:</strong> false</pre>\n\n<p><strong>Пример 3:</strong></p>\n<pre><strong>Ввод:</strong> nums = [1,1,1,3,3,4,3,2,4,2]\n<strong>Вывод:</strong> true</pre>\n\n<p>&nbsp;</p>\n   \n<p><strong>Ограничения:</strong></p>\n<ul><li><code>1 <= nums.length <= 10<sup>5</code></li></sup>\n<li><code>-10<sup>9</sup> <= nums[i] <= 10<sup>9</code></li></ul></sup>"
+  },
+  "5": {
+    "title": "Longest Palindromic Substring",
+    "rusTitle": "Самая длинная палиндромная подстрока",
+    "description": "<p>Дана строка <code>s</code>, верните <em>самую длинную <span data-keyword='palindromic-string' class='cursor-pointer relative text-dark-blue-s text-sm'>палиндромную</span> <span data-keyword='substring-nonempty' class='cursor-pointer relative text-dark-blue-s text-sm'>подстроку</span></em> в строке <code>s</code>.</p>\n\n<p>&nbsp;</p>\n\n<p><strong>Пример 1:</strong></p>\n<pre><strong>Ввод:</strong> s = \"babad\"\n<strong>Вывод:</strong> \"bab\"\n<strong>Пояснение:</strong> \"aba\" тоже является правильным ответом.</pre>\n   \n<p><strong>Пример 2:</strong></p>\n<pre><strong>Ввод:</strong> s = \"cbbd\"\n<strong>Вывод:</strong> \"bb\"</pre>\n\n<p>&nbsp;</p>\n   \n<p><strong>Ограничения:</strong></p>\n<ul><li><code>1 <= s.length <= 1000</code></li>\n<li><code>s</code> содержит только цифры и английские буквы.</li></ul>"
   }
 }
