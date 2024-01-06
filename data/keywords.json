@@ -1,0 +1,7 @@
+{
+  "subsequence-array": {
+    "name": "Subsequence",
+    "rusName": "Подпоследовательность",
+    "description": "<p><strong>Подпоследовательность</strong> массива <code>a</code> - это массив, который можно получить из массива <code>a</code> путем удаления от <code>0</code> до <code>a.length</code> элементов без изменения порядка элементов.</p>"
+  }
+}
