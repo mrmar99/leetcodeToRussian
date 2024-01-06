@@ -82,6 +82,11 @@ class UIEditor {
     for (let i = 0; i < this.engDescription.children.length; i++) {
       if (this.engDescription.children[i].tagName === "IMG") {
         this.descriptionImages[i] = this.engDescription.children[i];
+      } else {
+        const img = this.engDescription.children[i].querySelector('img');
+        if (img) {
+          this.descriptionImages[i] = this.engDescription.children[i];
+        }
       }
     }
   }
