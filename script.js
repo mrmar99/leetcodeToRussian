@@ -14,8 +14,8 @@ async function main() {
     const id = parseInt(title.textContent);
     const t = await getFromStorage("leetcodeToRussianTranslations", id);
     if (t) {
-      const { rusTitle, description, keywords } = t;
-      const ui = new UIEditor(rusTitle, description, keywords);
+      const { rusTitle, description } = t;
+      const ui = new UIEditor(rusTitle, description);
       await ui.setRus();
 
       // setTimeout(() => ui.setEng(), 8000);
@@ -60,7 +60,7 @@ async function fetchDataFromJson(path) {
 }
 
 class UIEditor {
-  constructor(rusTitle, rusDescription, keywords) {
+  constructor(rusTitle, rusDescription) {
     if (arguments.length < 2)
       throw new Error("Необходимо передать все аргументы");
 
@@ -68,7 +68,6 @@ class UIEditor {
 
     this.rusTitle = rusTitle;
     this.rusDescription = rusDescription;
-    this.keywords = keywords;
 
     this.engTitle = document.querySelector(".text-title-large");
     this.engDescription = document.querySelector(
@@ -87,8 +86,22 @@ class UIEditor {
     }
   }
 
-  keywordListener(keyword) {
-    console.log(keyword, keyword.firstElementChild.lastElementChild);
+  keywordListener(keyword, popupEl) {
+    const keywordRect = keyword.getBoundingClientRect();
+    const popupRect = popupEl.getBoundingClientRect();
+
+    const center = keywordRect.left + keywordRect.width / 2;
+
+    let popupX = center - popupRect.width / 2;
+    let popupY = keywordRect.top - popupRect.height - 10;
+
+    if (popupX < 11) popupX = 11;
+    if (popupY < 0) popupY = keywordRect.bottom + 10;
+
+    popupEl.style.left = `${popupX}px`;
+    popupEl.style.top = `${popupY}px`;
+    popupEl.style.opacity = '1';
+    popupEl.style.visibility = 'visible';
   }
 
   async saveKeywords() {
@@ -99,9 +112,6 @@ class UIEditor {
         const id = keyword.dataset.keyword;
         const k = await getFromStorage("leetcodeToRussianKeywords", id);
         this.descriptionKeywords[id] = { ...k, keywordElement: keyword };
-
-        // УБРАТЬ И ПЕРЕНЕСТИ В setRus, а в setEng поставить removeEventListener
-        keyword.addEventListener("mouseenter", this.keywordListener(keyword));
       }
     } catch (e) {
       console.error(e);
@@ -159,36 +169,46 @@ class UIEditor {
       tmpEl.insertBefore(img, tmpEl.children[i]);
     }
 
-    const tmpElKeywords = tmpEl.querySelectorAll("[data-keyword]");
-    this.rusDescriptionKeywords = {};
-    for (const keyword of tmpElKeywords) {
-      const id = keyword.dataset.keyword;
-      this.rusDescriptionKeywords[id] = keyword.textContent;
-    }
-    
-    for (const k in this.descriptionKeywords) {
-      const { keywordElement } = this.descriptionKeywords[k];
-      const tmpKeywordElement = keywordElement.cloneNode(true);
-      const keywordInText = this.keywords[k];
-      const textEl = Array.from(
-        tmpKeywordElement.querySelectorAll("em, strong")
-      ).findLast((el) => el.textContent.trim() === keywordInText);
-      textEl.textContent = this.rusDescriptionKeywords[k];
-      this.descriptionKeywords[k]["rusKeywordElement"] = tmpKeywordElement;
-      
-      const keyword = tmpEl.querySelector(`[data-keyword=${k}]`);
-      const parent = keyword.parentElement;
-      parent.replaceWith(tmpKeywordElement);
-
-      // Вставить новый элемент после текущего элемента
-      parent.insertAdjacentElement('afterend', tmpKeywordElement);
-      // keyword.replaceWith(tmpKeywordElement);
-      // console.log(keyword.parentElement, keyword.parentNode)
-      // const parent = keyword.parentElement;
-      // parent.replaceChild(tmpKeywordElement, keyword);
-    }
-
     this.engDescription.innerHTML = tmpEl.innerHTML;
+
+    const rusKeywords = this.engDescription.querySelectorAll("[data-keyword]");
+    const relative = document.querySelector("#__next");
+    for (const rusKeyword of rusKeywords) {
+      const el = document.createElement("div");
+      const elStyle = `
+        z-index: 40;
+        display: block;
+        opacity: 0;
+        visibility: hidden;
+        position: fixed;
+        box-shadow: 0 0 #0000,0 0 #0000,0 0 #0000,0 0 #0000,0px 1px 3px #0000003d,0px 6px 16px #00000029;
+        transition: opacity 0.15s ease;
+        font-weight: initial;
+        font-style: initial;
+        color: initial;
+      `;
+      el.style = elStyle;
+
+      const k = rusKeyword.dataset.keyword;
+      const { rusName, description } = this.descriptionKeywords[k];
+      el.innerHTML = `<div class="custom-keyword-popup" style="background-color: #363636;border: 1px solid rgb(255,255,255,.1);border-radius: 7px;max-width: 385px;">  <div class="popup-title" style="font-weight: 600;padding: 16px;border-bottom: 1px solid rgb(255,255,255,.1);">${rusName}</div>  <div class="popup-content" style="padding: 16px;">${description}</div></div>`;
+      relative.insertAdjacentElement("beforeend", el);
+
+      let timer;
+      rusKeyword.addEventListener("pointerenter", () => {
+        timer = setTimeout(() => {
+          this.keywordListener(rusKeyword, el);
+        }, 500);
+      });
+      rusKeyword.addEventListener("pointerleave", () => {
+        clearTimeout(timer);
+        setTimeout(() => {
+          el.style.opacity = '0';
+          el.style.visibility = 'hidden';
+        }, 500);
+      });
+    }
+
     this.engDescription = description;
   }
 }
