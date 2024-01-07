@@ -3,19 +3,55 @@ window.addEventListener("load", function f() {
   isReady ? main() : setTimeout(f, 300);
 });
 
+const KEYWORDS_VERSION = "leetcodeToRussianKeywordsVersion";
+const KEYWORD = "leetcodeToRussianKeyword_";
+const TRANSLATIONS_VERSION = "leetcodeToRussianTranslationsVersion";
+const TRANSLATIONS_IDS = "leetcodeToRussianTranslationsIds";
+const TRANSLATION = "leetcodeToRussianTranslation_";
+
 async function main() {
   try {
-    await translationsLoader();
-    await keywordsLoader();
-
     const title = document.querySelector(".text-title-large");
     if (!title) return;
-
     const id = parseInt(title.textContent);
-    const t = await getFromStorage("leetcodeToRussianTranslations", id);
+
+    const kVersionAPI = await fetchVersion("keywords");
+    const kVersionLocal = (await chrome.storage.local.get(KEYWORDS_VERSION))[KEYWORDS_VERSION];
+
+    if (!kVersionLocal || kVersionLocal < kVersionAPI) {
+      await keywordsSaver();
+      await chrome.storage.local.set({ [KEYWORDS_VERSION]: kVersionAPI });
+    }
+
+    const tVersionAPI = await fetchVersion("translations");
+    const tVersionLocal = (await chrome.storage.local.get(TRANSLATIONS_VERSION))[TRANSLATIONS_VERSION];
+
+    const tIdsCheck = (await chrome.storage.local.get(TRANSLATIONS_IDS))[TRANSLATIONS_IDS];
+    if (!tIdsCheck) await chrome.storage.local.set({ [TRANSLATIONS_IDS]: {} });
+
+    let t = (await chrome.storage.local.get(`${TRANSLATION}${id}`))[`${TRANSLATION}${id}`];
+
+    if (!t) {
+      t = await fetchTranslation(id);
+      if (t) await translationSaver(id, t);
+    }
+
+    const tIds = (await chrome.storage.local.get(TRANSLATIONS_IDS))[TRANSLATIONS_IDS];
+    if (!tVersionLocal || tVersionLocal < tVersionAPI) {
+      for (const tId of Object.values(tIds)) {
+        const tData = await fetchTranslation(tId);
+        await translationSaver(tId, tData);
+      }
+      await chrome.storage.local.set({ [TRANSLATIONS_VERSION]: tVersionAPI }); 
+    }
+
     if (t) {
+      console.log("tIds:", tIds);
+      tIds[id] = id;
+      await chrome.storage.local.set({ [TRANSLATIONS_IDS]: tIds });
+      
       const { rusTitle, description } = t;
-      const ui = new UIEditor(rusTitle, description);
+      const ui = new UIEditor(rusTitle, description.replace(/\\n/g, '\n'));
       await ui.setRus();
 
       // setTimeout(() => ui.setEng(), 8000);
@@ -27,22 +63,50 @@ async function main() {
   }
 }
 
-async function getFromStorage(key, el) {
+async function fetchTranslation(id) {
   try {
-    const response = await chrome.storage.local.get(key);
-    const data = response[key];
-    const result = data[el];
-    return result;
+    const res = await fetch(`https://leetcode-to-russian-api.vercel.app/api/translations/${id}`);
+    const resJson = await res.json();
+    return resJson.data;
   } catch (e) {
     console.error(e);
   }
 }
 
-async function translationsLoader() {
+async function fetchVersion(vId) {
   try {
-    const data = await fetchDataFromJson("data/translations.json");
-    await chrome.storage.local.set({ leetcodeToRussianTranslations: data });
-    console.log("Translations loaded to chrome storage");
+    const res = await fetch(`https://leetcode-to-russian-api.vercel.app/api/versions/${vId}`);
+    const resJson = await res.json();
+    return resJson.data;
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function keywordsSaver() {
+  try {
+    const res = await fetch("https://leetcode-to-russian-api.vercel.app/api/keywords");
+    const resJson = await res.json();
+    const keywords = resJson.data;
+
+    for (const k of keywords) {
+      const { id, rusName, description } = k;
+      await chrome.storage.local.set({ [`${KEYWORD}${id}`]: {
+        rusName,
+        description
+      }});
+    }
+    
+    console.log("Keywords updated in chrome storage");
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function translationSaver(id, data, tIds) {
+  try {
+    await chrome.storage.local.set({ [`${TRANSLATION}${id}`]: data });
+    console.log(`Translation ${id} saved to chrome storage`);
   } catch (e) {
     console.error(e);
   }
@@ -67,7 +131,7 @@ class UIEditor {
     this.isRussian = false;
 
     this.rusTitle = rusTitle;
-    this.rusDescription = rusDescription;
+    this.rusDescription = rusDescription.replace(/ /g, ' ');
 
     this.engTitle = document.querySelector(".text-title-large");
     this.engDescription = document.querySelector(
@@ -91,31 +155,13 @@ class UIEditor {
     }
   }
 
-  keywordListener(keyword, popupEl) {
-    const keywordRect = keyword.getBoundingClientRect();
-    const popupRect = popupEl.getBoundingClientRect();
-
-    const center = keywordRect.left + keywordRect.width / 2;
-
-    let popupX = center - popupRect.width / 2;
-    let popupY = keywordRect.top - popupRect.height - 10;
-
-    if (popupX < 11) popupX = 11;
-    if (popupY < 0) popupY = keywordRect.bottom + 10;
-
-    popupEl.style.left = `${popupX}px`;
-    popupEl.style.top = `${popupY}px`;
-    popupEl.style.opacity = '1';
-    popupEl.style.visibility = 'visible';
-  }
-
   async saveKeywords() {
     try {
       this.descriptionKeywords = {};
       const keywords = document.querySelectorAll("[data-keyword]");
       for (const keyword of keywords) {
         const id = keyword.dataset.keyword;
-        const k = await getFromStorage("leetcodeToRussianKeywords", id);
+        const k = (await chrome.storage.local.get(`${KEYWORD}${id}`))[`${KEYWORD}${id}`];
         this.descriptionKeywords[id] = { ...k, keywordElement: keyword };
       }
     } catch (e) {
@@ -162,6 +208,24 @@ class UIEditor {
     title.insertAdjacentElement("beforebegin", newTitle);
     title.style = `font-size:16px;opacity:0.5;font-weight:400;`;
     title.childNodes[0].textContent = oldText.split(" ").slice(1).join(" ");
+  }
+
+  keywordListener(keyword, popupEl) {
+    const keywordRect = keyword.getBoundingClientRect();
+    const popupRect = popupEl.getBoundingClientRect();
+
+    const center = keywordRect.left + keywordRect.width / 2;
+
+    let popupX = center - popupRect.width / 2;
+    let popupY = keywordRect.top - popupRect.height - 10;
+
+    if (popupX < 11) popupX = 11;
+    if (popupY < 0) popupY = keywordRect.bottom + 10;
+
+    popupEl.style.left = `${popupX}px`;
+    popupEl.style.top = `${popupY}px`;
+    popupEl.style.opacity = '1';
+    popupEl.style.visibility = 'visible';
   }
 
   changeDescription(rusDescription) {
@@ -215,15 +279,5 @@ class UIEditor {
     }
 
     this.engDescription = description;
-  }
-}
-
-async function keywordsLoader() {
-  try {
-    const data = await fetchDataFromJson("data/keywords.json");
-    await chrome.storage.local.set({ leetcodeToRussianKeywords: data });
-    console.log("Keywords loaded to chrome storage");
-  } catch (e) {
-    console.error(e);
   }
 }
