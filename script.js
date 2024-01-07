@@ -112,17 +112,6 @@ async function translationSaver(id, data, tIds) {
   }
 }
 
-async function fetchDataFromJson(path) {
-  try {
-    const translationsUrl = chrome.runtime.getURL(path);
-    const response = await fetch(translationsUrl);
-    const data = await response.json();
-    return data;
-  } catch (e) {
-    console.error(e);
-  }
-}
-
 class UIEditor {
   constructor(rusTitle, rusDescription) {
     if (arguments.length < 2)
