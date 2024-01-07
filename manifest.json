@@ -19,7 +19,6 @@
     "storage"
   ],
   "web_accessible_resources": [{ 
-  "resources": ["data/translations.json", "data/keywords.json"],
-  "matches": ["<all_urls>"]
-}]
+    "matches": ["<all_urls>"]
+  }]
 }
