@@ -1,0 +1,11 @@
+* {
+  margin: 0;
+  padding: 16px;
+}
+
+body {
+  background-color: #08080e;
+  border: 1px solid red;
+  border-radius: 10px;
+  color: white;
+}

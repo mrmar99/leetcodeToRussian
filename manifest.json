@@ -4,7 +4,7 @@
   "description": "Translate LeetCode Problems to Russian",
   "version": "0.0.6",
   "action": {
-    "default_popup": "hello.html"
+    "default_popup": "index.html"
   },
   "icons": {
     "16": "icons/icon16.png",
