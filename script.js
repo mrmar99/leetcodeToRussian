@@ -120,7 +120,8 @@ class UIEditor {
     this.isRussian = false;
 
     this.rusTitle = rusTitle;
-    this.rusDescription = rusDescription.replace(/ /g, ' ');
+    this.rusDescription = document.createElement("div");
+    this.rusDescription.innerHTML = rusDescription.replace(/ /g, ' ');
 
     this.engTitle = document.querySelector(".text-title-large");
     this.engDescription = document.querySelector(
@@ -147,10 +148,12 @@ class UIEditor {
   async saveKeywords() {
     try {
       this.descriptionKeywords = {};
-      const keywords = document.querySelectorAll("[data-keyword]");
+      const keywords = this.rusDescription.querySelectorAll("[data-keyword]");
+      console.log(keywords)
       for (const keyword of keywords) {
         const id = keyword.dataset.keyword;
         const k = (await chrome.storage.local.get(`${KEYWORD}${id}`))[`${KEYWORD}${id}`];
+        console.log(k)
         this.descriptionKeywords[id] = { ...k, keywordElement: keyword };
       }
     } catch (e) {
@@ -162,7 +165,7 @@ class UIEditor {
     if (!this.isRussian) {
       await this.saveKeywords();
       this.changeTitle(this.rusTitle);
-      this.changeDescription(this.rusDescription);
+      this.changeDescription();
       this.isRussian = true;
     }
   }
@@ -217,17 +220,15 @@ class UIEditor {
     popupEl.style.visibility = 'visible';
   }
 
-  changeDescription(rusDescription) {
+  changeDescription() {
     const description = this.engDescription.cloneNode(true);
-    const tmpEl = document.createElement("div");
-    tmpEl.innerHTML = rusDescription;
 
     for (const i in this.descriptionImages) {
       const img = this.descriptionImages[i];
-      tmpEl.insertBefore(img, tmpEl.children[i]);
+      this.rusDescription.insertBefore(img, this.rusDescription.children[i]);
     }
 
-    this.engDescription.innerHTML = tmpEl.innerHTML;
+    this.engDescription.innerHTML = this.rusDescription.innerHTML;
 
     const rusKeywords = this.engDescription.querySelectorAll("[data-keyword]");
     const relative = document.querySelector("#__next");
@@ -248,6 +249,7 @@ class UIEditor {
       el.style = elStyle;
 
       const k = rusKeyword.dataset.keyword;
+      console.log(k, this.descriptionKeywords, this.descriptionKeywords[k])
       const { rusName, description } = this.descriptionKeywords[k];
       el.innerHTML = `<div class="custom-keyword-popup" style="background-color: #363636;border: 1px solid rgb(255,255,255,.1);border-radius: 7px;max-width: 385px;">  <div class="popup-title" style="font-weight: 600;padding: 16px;border-bottom: 1px solid rgb(255,255,255,.1);">${rusName}</div>  <div class="popup-content" style="padding: 16px;">${description}</div></div>`;
       relative.insertAdjacentElement("beforeend", el);
