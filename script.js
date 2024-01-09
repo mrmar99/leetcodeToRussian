@@ -14,7 +14,7 @@ window.addEventListener("locationchange", loadEventDispatcher);
 window.addEventListener("load", function f() {
   console.log("LOADING...");
   const isReady = document.querySelector(".flexlayout__layout");
-  isReady ? main() : setTimeout(f, 400);
+  isReady ? main() : setTimeout(() => window.dispatchEvent(new Event("load")), 1000);
 });
 
 const TRANSLATIONS = "leetcodeToRussianTranslations";
@@ -274,6 +274,16 @@ class UIEditor {
   }
 
   changeDescription() {
+    for (const dChild of this.engDescription.children) {
+      const currKeywords = dChild.querySelectorAll("[data-keyword]");
+      if (currKeywords.length) {
+        for (const currK of currKeywords) {
+          const textEl = currK.querySelector("strong, em, b, i, u");
+          dChild.replaceChild(textEl, currK);
+        }
+      }
+    }
+
     for (const i in this.descriptionImages) {
       const img = this.descriptionImages[i];
       this.rusDescription.insertBefore(img, this.rusDescription.children[i]);
@@ -285,24 +295,10 @@ class UIEditor {
     this.createListenersForKeywords(this.rusDescription);
     this.engDescription = description;
 
-    for (let i = 0; i < this.engDescription.children.length; i++) {
-      if (this.descriptionImages[i]) {
-        const img = this.descriptionImages[i];
-        this.engDescription.insertBefore(img, this.engDescription.children[i]);
-      }
-
-      const currKeywords = this.engDescription.querySelectorAll("[data-keyword]");
-      for (const currK of currKeywords) {
-        const k = document.createElement("span");
-        k.innerHTML = currK.querySelector("strong, em, b, i, u");
-        this.engDescription.insertBefore(k, this.engDescription.children[i]);
-      }
+    for (const i in this.descriptionImages) {
+      const img = this.descriptionImages[i];
+      this.engDescription.insertBefore(img, this.engDescription.children[i]);
     }
-
-    // for (const i in this.descriptionImages) {
-    //   const img = this.descriptionImages[i];
-    //   this.engDescription.insertBefore(img, this.engDescription.children[i]);
-    // }
 
     this.isRussianSaved = true;
   }
