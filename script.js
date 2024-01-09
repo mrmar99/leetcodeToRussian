@@ -2,6 +2,11 @@ const baseUrl = "https://leetcode.com/problems/";
 let lastProblem = "";
 let newProblem = "";
 
+const delay = 100;
+const maxTime = 20000;
+const maxTries = maxTime / delay;
+let triesCnt = 0;
+
 const loadEventDispatcher = ({ target }) => {
   newProblem = target.location.href.slice(baseUrl.length).split("/")[0];
   if (lastProblem.length && lastProblem !== newProblem) {
@@ -12,9 +17,17 @@ const loadEventDispatcher = ({ target }) => {
 window.addEventListener("locationchange", loadEventDispatcher);
 
 window.addEventListener("load", function f() {
-  console.log("LOADING...");
-  const isReady = document.querySelector(".flexlayout__layout");
-  isReady ? main() : setTimeout(() => window.dispatchEvent(new Event("load")), 1000);
+  const isReady = document.querySelector('[data-track-load="description_content"]');
+  if (isReady) {
+    triesCnt = 0;
+    main();
+  } else if (triesCnt < maxTries) {
+    triesCnt++;
+    setTimeout(() => window.dispatchEvent(new Event("load")), delay);
+  } else {
+    triesCnt = 0;
+    console.log("Максимальное количество попыток превышено. Элемент не найден.");
+  }
 });
 
 const TRANSLATIONS = "leetcodeToRussianTranslations";
@@ -100,6 +113,16 @@ async function main() {
       });
     } else {
       console.log("Эта задача еще не переведена");
+      const body = document.querySelector("body");
+      const errorElement = document.createElement("div");
+      const errorElementStyle = "opacity:0;transition:all 0.3s ease;z-index:999;position:fixed;top:10px;left:10px;width:280px;height:80px;border:1px solid #EEEBD3;border-radius:15px;background-color:#EF6F6C;font-weight:700;display:flex;align-items:center;justify-content:center;color:#191923;";
+      errorElement.innerHTML = `<div class='translation-not-found' style='${errorElementStyle}'>Эта задача еще не переведена</div>`;
+      body.append(errorElement);
+      setTimeout(() => errorElement.firstChild.style.opacity = "1", 100);
+      setTimeout(() => {
+        errorElement.firstChild.style.opacity = "0";
+        setTimeout(() => body.removeChild(errorElement), 100);
+      }, 3000);
     }
   } catch (e) {
     console.error(e);
@@ -159,7 +182,7 @@ async function keywordsSaver() {
     }
 
     await chrome.storage.local.set({ [KEYWORDS]: keywordsToSave });
-    console.log("Keywords updated in chrome storage");
+    console.log("Keywords обновлены и сохранены в локальное хранилище");
   } catch (e) {
     console.error(e);
   }
@@ -174,7 +197,7 @@ async function translationsSaver(fetchedTranslations, translations) {
 
     translations = { ...translations, ...translationsToSave };
     await chrome.storage.local.set({ [TRANSLATIONS]: translations });
-    console.log(`Translations saved to chrome storage`);
+    console.log(`Translations сохранены в локальное хранилище`);
     return translations;
   } catch (e) {
     console.error(e);
@@ -222,8 +245,6 @@ class UIEditor {
       this.localKeywords = (await chrome.storage.local.get(KEYWORDS))[
         KEYWORDS
       ];
-
-      console.log("keywords", keywords)
 
       for (const keyword of keywords) {
         const id = keyword.dataset.keyword;
