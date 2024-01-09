@@ -252,6 +252,23 @@ class UIEditor {
       console.log(k, this.descriptionKeywords, this.descriptionKeywords[k])
       const { rusName, description } = this.descriptionKeywords[k];
       el.innerHTML = `<div class="custom-keyword-popup" style="background-color: #363636;border: 1px solid rgb(255,255,255,.1);border-radius: 7px;max-width: 385px;">  <div class="popup-title" style="font-weight: 600;padding: 16px;border-bottom: 1px solid rgb(255,255,255,.1);">${rusName}</div>  <div class="popup-content" style="padding: 16px;">${description}</div></div>`;
+      const pElements = el.querySelectorAll("p");
+      for (let i = 0; i < pElements.length - 1; i++) {
+        pElements[i].style = "margin-bottom: 0.5rem;";
+      } 
+      const codeElements = el.querySelectorAll("code");
+      for (const codeEl of codeElements) {
+        codeEl.style = `
+          background-color: #ffffff1a;
+          color: #eff1f6bf;
+          border: 1px solid #f7faff1f;
+          padding: 0.25rem;
+          border-radius: 0.5rem;
+          font-family: Menlo,sans-serif;
+          font-size: .75rem;
+          line-height: 1.5rem;
+        `;
+      }
       relative.insertAdjacentElement("beforeend", el);
 
       let timer;
