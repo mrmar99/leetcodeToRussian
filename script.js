@@ -11,6 +11,8 @@ const dispatchLoadEvent = () => window.dispatchEvent(new Event("load"));
 const locationChangeEvent = ({ target }) => {
   currProblem = target.location.href.slice(baseUrl.length).split("/")[0];
   if (target.location.href.startsWith(baseUrl) && lastProblem.length && lastProblem !== currProblem) {
+    const nextApp = document.querySelector("#__next");
+    if (nextApp) nextApp.innerHTML = "";
     window.location.href = baseUrl + currProblem;
     dispatchLoadEvent();
   }
