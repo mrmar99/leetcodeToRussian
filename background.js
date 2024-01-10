@@ -1,1 +1,0 @@
-chrome.tabs.insertCSS({ file: "style.css" });

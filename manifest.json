@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "LeetCode to Russian",
   "description": "Translate LeetCode Problems to Russian",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -11,13 +11,10 @@
   },
   "content_scripts": [
     {
-      "js": ["script.js"],
-      "css": ["style.css"],
+      "js": ["/scripts/Fetcher.js", "/scripts/LocalStorageManager.js", "/scripts/UIEditor.js", "/scripts/alerts.js", "script.js"],
+      "css": ["/styles/style.css"],
       "matches": ["https://*.leetcode.com/problems/*"]
     }
   ],
-  "permissions": ["storage", "tabs"],
-  "background": {
-    "service_worker": "background.js"
-  }
+  "permissions": ["storage"]
 }
