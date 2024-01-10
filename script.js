@@ -42,15 +42,12 @@ async function main() {
     const title = document.querySelector(".text-title-large");
     const id = parseInt(title.textContent);
 
-    let translations = await this.getTranslations();
-    let t = translations[id];
+    let translations = await LSM.getTranslations();
+    let t = translations[id] ?? await fetcher.translation(id);
 
     if (!t) {
-      t = await this.fetcher.translation(id);
-      if (!t) {
-        problemNotFoundAlert();
-        return;
-      }
+      problemNotFoundAlert();
+      return;
     }
 
     translations = await LSM.setTranslations([t], translations);

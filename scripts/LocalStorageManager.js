@@ -39,7 +39,7 @@ class LocalStorageManager {
 
   async initOrUpdateTranslations() {
     try {
-      translations = await this.getTranslations();
+      let translations = await this.getTranslations();
       if (!translations) await this.set(this.translationsKey, {});
       translations = await this.getTranslations();
 

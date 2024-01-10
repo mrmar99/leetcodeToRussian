@@ -26,7 +26,7 @@ class Fetcher {
   async translation(id) {
     try {
       const res = await fetch(this.translationsUrl + id);
-      if (res.status === 404) return null;
+      // if (res.status === 404) return null;
       const resJson = await res.json();
       return resJson.data;
     } catch (e) {
