@@ -1,11 +1,100 @@
-* {
-  margin: 0;
+.LTR-toggler {
+  font-weight: 700;
+  background: linear-gradient(to left, rgb(13, 162, 145) 50%, rgb(48 48 48) 50%);
+  user-select: none;
+}
+
+.LTR-toggler:hover {
+  cursor: pointer;
+}
+
+.LTR-toggler__active-RU {
+  background: linear-gradient(to left, rgb(13, 162, 145) 50%, rgb(48 48 48) 50%);
+}
+
+.LTR-toggler__active-EN {
+  background: linear-gradient(to right, rgb(13, 162, 145) 50%, rgb(48 48 48) 50%);
+}
+
+.error-element {
+  padding: 16px;
+  opacity: 1;
+  transition: opacity 0.3s ease-in;
+  z-index: 999;
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  width: 280px;
+  height: 80px;
+  border: 1px solid #EEEBD3;
+  border-radius: 15px;
+  background-color: #EF6F6C;
+  font-weight: 700; 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #191923;
+}
+
+.auth-or-old-element {
+  padding: 16px;
+  opacity: 1;
+  transition: opacity 0.3s ease-in;
+  max-width: 380px;
+  z-index: 999;
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  border: 1px solid #EEEBD3;
+  border-radius: 15px;
+  background-color: rgb(221, 213, 93);
+  font-weight: 700;
+  color: #191923;
+}
+
+.tooltip-container {
+  z-index: 40;
+  display: block;
+  opacity: 0;
+  visibility: hidden;
+  position: fixed;
+  box-shadow: 0 0 #0000,0 0 #0000,0 0 #0000,0 0 #0000,0px 1px 3px #0000003d,0px 6px 16px #00000029;
+  transition: opacity 0.15s ease;
+  font-weight: initial;
+  font-style: initial;
+  color: initial;
+  background-color: #363636;
+  border: 1px solid rgb(255, 255, 255, .1);
+  border-radius: 7px;
+  width: fit-content;
+  max-width: 385px;
+}
+
+.tooltip-title {
+  font-weight: 600;
+  padding: 16px;
+  border-bottom: 1px solid rgb(255, 255, 255, .1);
+}
+
+.tooltip-description {
   padding: 16px;
 }
 
-body {
-  background-color: #08080e;
-  border: 1px solid red;
-  border-radius: 10px;
-  color: white;
+.tooltip-description code {
+  background-color: #ffffff1a;
+  color: #eff1f6bf;
+  border: 1px solid #f7faff1f;
+  padding: 0.25rem;
+  border-radius: 0.5rem;
+  font-family: Menlo,sans-serif;
+  font-size: .75rem;
+  line-height: 1.5rem;
+}
+
+.tooltip-description > div > p, .tooltip-description > p {
+  margin-bottom: 0.5rem;
+}
+
+.tooltip-description > div p:last-child, .tooltip-description > p:last-child {
+  margin-bottom: 0;
 }
