@@ -36,24 +36,30 @@ async function main() {
 
     const fetcher = new Fetcher();
     const LSM = new LocalStorageManager(fetcher);
-    await LSM.initTranslationsIfNotExists();
     await LSM.initOrUpdateKeywords();
+    await LSM.initOrUpdateTranslations();
 
     const title = document.querySelector(".text-title-large");
     const id = parseInt(title.textContent);
-    await LSM.updateTranslations(id);
-    const translations = await LSM.getTranslations();
-    
-    const t = translations[id];
 
-    if (t) {
-      const { rusTitle, description } = t;
-      const ui = new UIEditor(rusTitle, description.replace(/\\n/g, "\n"));
-      await ui.setRus();
-      await ui.setToggler();
-    } else {
-      problemNotFoundAlert();
+    let translations = await this.getTranslations();
+    let t = translations[id];
+
+    if (!t) {
+      t = await this.fetcher.translation(id);
+      if (!t) {
+        problemNotFoundAlert();
+        return;
+      }
     }
+
+    translations = await LSM.setTranslations([t], translations);
+    t = translations[id];
+
+    const { rusTitle, description } = t;
+    const ui = new UIEditor(rusTitle, description.replace(/\\n/g, "\n"));
+    await ui.setRus();
+    await ui.setToggler();
   } catch (e) {
     console.error(e);
   }

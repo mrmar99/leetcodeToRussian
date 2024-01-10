@@ -23,15 +23,6 @@ class LocalStorageManager {
     }
   }
 
-  async initTranslationsIfNotExists() {
-    try {
-      const translations = await this.getTranslations();
-      if (!translations) await this.set(this.translationsKey, {});
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
   async initOrUpdateKeywords() {
     try {
       const versionAPI = await this.fetcher.version("keywords");
@@ -46,16 +37,12 @@ class LocalStorageManager {
     }
   }
 
-  async updateTranslations(id) {
+  async initOrUpdateTranslations() {
     try {
-      let translations = await this.getTranslations();
-      let t = translations[id];
-  
-      if (!t) {
-        t = await this.fetcher.translation(id);
-        if (t) translations = await this.setTranslations([t], translations);
-      }
-  
+      translations = await this.getTranslations();
+      if (!translations) await this.set(this.translationsKey, {});
+      translations = await this.getTranslations();
+
       const versionAPI = await this.fetcher.version("translations");
       const versionLocal = await this.getTranslationsVersion();
 

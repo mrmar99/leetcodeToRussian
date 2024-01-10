@@ -17,7 +17,7 @@ class Fetcher {
 
   async translations(ids) {
     try {
-      return await this.fetchData(this.translationsUrl + `?ids=${ids}`)
+      return await this.fetchData(this.translationsUrl + `?ids=${ids}`);
     } catch (e) {
       console.error(e);
     }
@@ -25,7 +25,10 @@ class Fetcher {
 
   async translation(id) {
     try {
-      return await this.fetchData(this.translationsUrl + id);
+      const res = await fetch(this.translationsUrl + id);
+      if (res.status === 404) return null;
+      const resJson = await res.json();
+      return resJson.data;
     } catch (e) {
       console.error(e);
     }
