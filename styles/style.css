@@ -16,40 +16,39 @@
   background: linear-gradient(to right, rgb(13, 162, 145) 50%, rgb(48 48 48) 50%);
 }
 
-.error-element {
+.alert {
   padding: 16px;
   opacity: 1;
   transition: opacity 0.3s ease-in;
+  max-width: 300px;
   z-index: 999;
   position: fixed;
   top: 10px;
   left: 10px;
-  width: 280px;
-  height: 80px;
-  border: 1px solid #EEEBD3;
-  border-radius: 15px;
-  background-color: #EF6F6C;
-  font-weight: 700; 
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.alert, .alert p {
+  font-weight: 600;
+  font-size: 14px;
+  margin: 8px 0;
+  line-height: 20px;
+}
+
+.error-alert {
+  border: 1px solid #f5c6cb;
+  background-color: #f8d7da;
+  color: #721c24;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #191923;
 }
 
-.auth-or-old-element {
-  padding: 16px;
-  opacity: 1;
-  transition: opacity 0.3s ease-in;
-  max-width: 380px;
-  z-index: 999;
-  position: fixed;
-  top: 10px;
-  left: 10px;
-  border: 1px solid #EEEBD3;
-  border-radius: 15px;
-  background-color: rgb(221, 213, 93);
-  font-weight: 700;
-  color: #191923;
+.auth-or-old-alert {
+  border: 1px solid #ffeeba;
+  background-color: #fff3cd;
+  color: #856404;
 }
 
 .tooltip-container {
