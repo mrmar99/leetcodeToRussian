@@ -17,18 +17,11 @@ const loadEventDispatcher = ({ target }) => {
 window.addEventListener("locationchange", loadEventDispatcher);
 
 window.addEventListener("load", function f() {
-  console.log("TRY")
+  triesCnt++;
   const isReady = document.querySelector('[data-track-load="description_content"]') && document.querySelector(".text-title-large");
-  if (isReady) {
-    triesCnt = 0;
-    main();
-  } else if (triesCnt <= maxTries) {
-    triesCnt++;
-    setTimeout(() => window.dispatchEvent(new Event("load")), delay);
-  } else {
-    triesCnt = 0;
-    showAuthRequiredOrOldVersion();
-  }
+  if (isReady) main();
+  else if (triesCnt <= maxTries) setTimeout(() => window.dispatchEvent(new Event("load")), delay);
+  else showAuthRequiredOrOldVersion();
 });
 
 async function main() {
@@ -169,7 +162,7 @@ class LocalStorageManager {
     
       translations = { ...translations, ...translationsToSave };
       await this.set(this.translationsKey, translations);
-      console.log(`Translations сохранены в локальное хранилище`);
+      console.log(`Переводы обновлены и сохранены в локальное хранилище`);
       return translations;
     } catch (e) {
       console.error(e);
@@ -195,7 +188,7 @@ class LocalStorageManager {
       }
   
       await this.set(this.keywordsKey, keywordsToSave);
-      console.log("Keywords обновлены и сохранены в локальное хранилище");
+      console.log("Термины обновлены и сохранены в локальное хранилище");
     } catch (e) {
       console.error(e);
     }
