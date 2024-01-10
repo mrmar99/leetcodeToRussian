@@ -9,7 +9,7 @@ let triesCnt = 0;
 
 const loadEventDispatcher = ({ target }) => {
   newProblem = target.location.href.slice(baseUrl.length).split("/")[0];
-  if (lastProblem.length && lastProblem !== newProblem) {
+  if (lastProblem.startsWith(baseUrl) && lastProblem.length && lastProblem !== newProblem) {
     window.location.href = baseUrl + newProblem;
     window.dispatchEvent(new Event("load"));
   }
