@@ -3,7 +3,7 @@ let lastProblem = "";
 let newProblem = "";
 
 const delay = 100;
-const maxTime = 20000;
+const maxTime = 8000;
 const maxTries = maxTime / delay;
 let triesCnt = 0;
 
@@ -17,195 +17,285 @@ const loadEventDispatcher = ({ target }) => {
 window.addEventListener("locationchange", loadEventDispatcher);
 
 window.addEventListener("load", function f() {
-  const isReady = document.querySelector('[data-track-load="description_content"]');
+  console.log("TRY")
+  const isReady = document.querySelector('[data-track-load="description_content"]') && document.querySelector(".text-title-large");
   if (isReady) {
     triesCnt = 0;
     main();
-  } else if (triesCnt < maxTries) {
+  } else if (triesCnt <= maxTries) {
     triesCnt++;
     setTimeout(() => window.dispatchEvent(new Event("load")), delay);
   } else {
     triesCnt = 0;
-    console.log("Максимальное количество попыток превышено. Элемент не найден.");
+    showAuthRequiredOrOldVersion();
   }
 });
-
-const TRANSLATIONS = "leetcodeToRussianTranslations";
-const KEYWORDS = "leetcodeToRussianKeywords";
-const KEYWORDS_VERSION = "leetcodeToRussianKeywordsVersion";
-const TRANSLATIONS_VERSION = "leetcodeToRussianTranslationsVersion";
 
 async function main() {
   try {
     const title = document.querySelector(".text-title-large");
-    if (!title) return;
     lastProblem = window.location.href.slice(baseUrl.length).split("/")[0];
 
+    const fetcher = new Fetcher();
+    const LSM = new LocalStorageManager(fetcher);
+    await LSM.initTranslationsIfNotExists();
+    await LSM.initOrUpdateKeywords();
+
     const id = parseInt(title.textContent);
+    await LSM.updateTranslations(id);
+    const translations = await LSM.getTranslations();
+    
+    const t = translations[id];
 
-    const kVersionAPI = await fetchVersion("keywords");
-    const kVersionLocal = (await chrome.storage.local.get(KEYWORDS_VERSION))[
-      KEYWORDS_VERSION
-    ];
-
-    if (!kVersionLocal || kVersionLocal < kVersionAPI) {
-      await keywordsSaver();
-      await chrome.storage.local.set({ [KEYWORDS_VERSION]: kVersionAPI });
-    }
-
-    const tVersionAPI = await fetchVersion("translations");
-    const tVersionLocal = (
-      await chrome.storage.local.get(TRANSLATIONS_VERSION)
-    )[TRANSLATIONS_VERSION];
-
-    let translations = (await chrome.storage.local.get(TRANSLATIONS))[
-      TRANSLATIONS
-    ];
-    if (!translations) await chrome.storage.local.set({ [TRANSLATIONS]: {} });
-    translations = (await chrome.storage.local.get(TRANSLATIONS))[TRANSLATIONS];
-
-    let t = translations[id];
-
-    if (!t) {
-      t = await fetchTranslation(id);
-      if (t) translations = await translationsSaver([t], translations);
-    }
-
-    if (!tVersionLocal || tVersionLocal < tVersionAPI) {
-      const translationsIds = Object.keys(translations);
-      if (translationsIds.length) {
-        const fetchedTranslations = await fetchTranslations(translationsIds);
-        translations = await translationsSaver(
-          fetchedTranslations,
-          translations
-        );
-      }
-      await chrome.storage.local.set({ [TRANSLATIONS_VERSION]: tVersionAPI });
-    }
-
-    t = translations[id];
     if (t) {
       const { rusTitle, description } = t;
       const ui = new UIEditor(rusTitle, description.replace(/\\n/g, "\n"));
       await ui.setRus();
-
-      const bar = document.querySelector(
-        '[data-track-load="description_content"]'
-      ).previousElementSibling;
-      const toggler = document.createElement("div");
-      toggler.className =
-        "relative inline-flex items-center justify-center text-caption px-2 py-1 gap-1 rounded-full bg-fill-secondary cursor-pointer transition-colors hover:bg-fill-primary hover:text-text-primary text-sd-secondary-foreground hover:opacity-80";
-      toggler.style =
-        "background:linear-gradient(to left, rgb(13, 162, 145) 50%, rgb(48 48 48) 50%);font-weight:700;transition:background 0.3s ease;";
-      toggler.textContent = "EN | RU";
-      bar.append(toggler);
-
-      toggler.addEventListener("click", async () => {
-        if (ui.isRussian) {
-          ui.setEng();
-          toggler.style =
-            "background:linear-gradient(to right, rgb(13, 162, 145) 50%, rgb(48 48 48) 50%);font-weight:700;transition:background 0.3s ease;";
-        } else {
-          await ui.setRus();
-          toggler.style =
-            "background:linear-gradient(to left, rgb(13, 162, 145) 50%, rgb(48 48 48) 50%);font-weight:700;transition:background 0.3s ease;";
-        }
-      });
+      await ui.setToggler();
     } else {
-      console.log("Эта задача еще не переведена");
-      const body = document.querySelector("body");
-      const errorElement = document.createElement("div");
-      const errorElementStyle = "opacity:0;transition:all 0.3s ease;z-index:999;position:fixed;top:10px;left:10px;width:280px;height:80px;border:1px solid #EEEBD3;border-radius:15px;background-color:#EF6F6C;font-weight:700;display:flex;align-items:center;justify-content:center;color:#191923;";
-      errorElement.innerHTML = `<div class='translation-not-found' style='${errorElementStyle}'>Эта задача еще не переведена</div>`;
-      body.append(errorElement);
-      setTimeout(() => errorElement.firstChild.style.opacity = "1", 100);
-      setTimeout(() => {
-        errorElement.firstChild.style.opacity = "0";
-        setTimeout(() => body.removeChild(errorElement), 100);
-      }, 3000);
+      showNotFoundError();
     }
   } catch (e) {
     console.error(e);
   }
 }
 
-async function fetchTranslations(ids) {
-  try {
-    const res = await fetch(
-      `https://leetcode-to-russian-api.vercel.app/api/translations/?ids=${ids.join(
-        ","
-      )}`
-    );
-    const resJson = await res.json();
-    return resJson.data;
-  } catch (e) {
-    console.error(e);
-  }
+function showAuthRequiredOrOldVersion() {
+  const body = document.querySelector("body");
+  const authOrOldElement = document.createElement("div");
+  authOrOldElement.classList.add("auth-or-old-element");
+  authOrOldElement.innerHTML = "<p>Не удается загрузить перевод. Это могло случиться по 3 причинам:</p><ol><li>Вы заходите со старого интерфейса;</li><li>Вы не авторизованы;</li><li>Превышено максимальное количество попыток поиска элементов для рендеринга.</li></ol>";
+  body.append(authOrOldElement);
+  authOrOldElement.addEventListener("click", () => authOrOldElement.remove());
+  setTimeout(() => {
+    authOrOldElement.style.opacity = "0";
+    authOrOldElement.remove();
+  }, 15000);
 }
 
-async function fetchTranslation(id) {
-  try {
-    const res = await fetch(
-      `https://leetcode-to-russian-api.vercel.app/api/translations/${id}`
-    );
-    const resJson = await res.json();
-    return resJson.data;
-  } catch (e) {
-    console.error(e);
-  }
+function showNotFoundError() {
+  const body = document.querySelector("body");
+  const errorElement = document.createElement("div");
+  errorElement.classList.add("error-element");
+  errorElement.textContent = "Эта задача еще не переведена";
+  body.append(errorElement);
+  errorElement.addEventListener("click", () => errorElement.remove());
+  setTimeout(() => {
+    errorElement.style.opacity = "0";
+    errorElement.remove();
+  }, 3000);
 }
 
-async function fetchVersion(vId) {
-  try {
-    const res = await fetch(
-      `https://leetcode-to-russian-api.vercel.app/api/versions/${vId}`
-    );
-    const resJson = await res.json();
-    return resJson.data;
-  } catch (e) {
-    console.error(e);
+class LocalStorageManager {
+  constructor(fetcher) {
+    this.fetcher = fetcher;
+    this.translationsKey = "leetcodeToRussianTranslations";
+    this.keywordsKey = "leetcodeToRussianKeywords";
+    this.translationsVersionKey = "leetcodeToRussianTranslationsVersion";
+    this.keywordsVersionKey = "leetcodeToRussianKeywordsVersion";
   }
-}
 
-async function keywordsSaver() {
-  try {
-    const res = await fetch(
-      "https://leetcode-to-russian-api.vercel.app/api/keywords"
-    );
-    const resJson = await res.json();
-    const keywords = resJson.data;
-
-    const keywordsToSave = {};
-    for (const k of keywords) {
-      const { id, rusName, description } = k;
-      keywordsToSave[id] = { rusName, description };
+  async set(key, value) {
+    try {
+      await chrome.storage.local.set({ [key]: value });
+    } catch (e) {
+      console.error(e);
     }
+  }
 
-    await chrome.storage.local.set({ [KEYWORDS]: keywordsToSave });
-    console.log("Keywords обновлены и сохранены в локальное хранилище");
-  } catch (e) {
-    console.error(e);
+  async get(key) {
+    try {
+      return (await chrome.storage.local.get(key))[key];
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async initTranslationsIfNotExists() {
+    try {
+      const translations = await this.getTranslations();
+      if (!translations) await this.set(this.translationsKey, {});
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async initOrUpdateKeywords() {
+    try {
+      const versionAPI = await this.fetcher.version("keywords");
+      const versionLocal = await this.getKeywordsVersion();
+  
+      if (!versionLocal || versionLocal < versionAPI) {
+        await this.setKeywords();
+        await this.setKeywordsVersion(versionAPI);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async updateTranslations(id) {
+    try {
+      let translations = await this.getTranslations();
+      let t = translations[id];
+  
+      if (!t) {
+        t = await this.fetcher.translation(id);
+        if (t) translations = await this.setTranslations([t], translations);
+      }
+  
+      const versionAPI = await this.fetcher.version("translations");
+      const versionLocal = await this.getTranslationsVersion();
+
+      if (!versionLocal || versionLocal < versionAPI) {
+        const tIds = Object.keys(translations);
+        if (tIds.length) {
+          const fetchedTranslations = await this.fetcher.translations(tIds);
+          translations = await this.setTranslations(fetchedTranslations, translations);
+        }
+        await this.setTranslationsVersion(versionAPI);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async setTranslations(fetchedTranslations, translations) {
+    try {
+      const translationsToSave = {};
+      for (const t of fetchedTranslations) {
+        translationsToSave[t.id] = t;
+      }
+    
+      translations = { ...translations, ...translationsToSave };
+      await this.set(this.translationsKey, translations);
+      console.log(`Translations сохранены в локальное хранилище`);
+      return translations;
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async getTranslations() {
+    try {
+      return await this.get(this.translationsKey);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async setKeywords() {
+    try {
+      const keywords = await this.fetcher.keywords();
+  
+      const keywordsToSave = {};
+      for (const k of keywords) {
+        const { id, rusName, description } = k;
+        keywordsToSave[id] = { rusName, description };
+      }
+  
+      await this.set(this.keywordsKey, keywordsToSave);
+      console.log("Keywords обновлены и сохранены в локальное хранилище");
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async getKeywords() {
+    try {
+      return await this.get(this.keywordsKey);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async setTranslationsVersion(version) {
+    try {
+      await this.set(this.translationsVersionKey, version);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async getTranslationsVersion() {
+    try {
+      return await this.get(this.translationsVersionKey);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async setKeywordsVersion(version) {
+    try {
+      await this.set(this.keywordsVersionKey, version);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async getKeywordsVersion() {
+    try {
+      return await this.get(this.keywordsVersionKey);
+    } catch (e) {
+      console.error(e);
+    }
   }
 }
 
-async function translationsSaver(fetchedTranslations, translations) {
-  try {
-    const translationsToSave = {};
-    for (const t of fetchedTranslations) {
-      translationsToSave[t.id] = t;
-    }
+class Fetcher {
+  constructor() {
+    this.translationsUrl = "https://leetcode-to-russian-api.vercel.app/api/translations/";
+    this.keywordsUrl = "https://leetcode-to-russian-api.vercel.app/api/keywords/";
+    this.versionsUrl = "https://leetcode-to-russian-api.vercel.app/api/versions/";
+  }
 
-    translations = { ...translations, ...translationsToSave };
-    await chrome.storage.local.set({ [TRANSLATIONS]: translations });
-    console.log(`Translations сохранены в локальное хранилище`);
-    return translations;
-  } catch (e) {
-    console.error(e);
+  async fetchData(url) {
+    try {
+      const res = await fetch(url);
+      const resJson = res.json();
+      return resJson.data;
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async translations(ids) {
+    try {
+      return await this.fetchData(this.translationsUrl + `?ids=${ids}`)
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async translation(id) {
+    try {
+      return await this.fetchData(this.translationsUrl + id);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async keywords() {
+    try {
+      return await this.fetchData(this.keywordsUrl);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async version(id) {
+    try {
+      return await this.fetchData(this.versionsUrl + id);
+    } catch (e) {
+      console.error(e);
+    }
   }
 }
 
 class UIEditor {
   constructor(rusTitle, rusDescription) {
+    this.LSM = new LocalStorageManager();
+
     if (arguments.length < 2)
       throw new Error("Необходимо передать все аргументы");
 
@@ -222,6 +312,28 @@ class UIEditor {
     );
 
     this.saveImages();
+  }
+
+  async setToggler() {
+    const bar = document.querySelector(
+      '[data-track-load="description_content"]'
+    ).previousElementSibling;
+    const toggler = document.createElement("div");
+    toggler.className = "LTR-toggler relative inline-flex items-center justify-center text-caption px-2 py-1 gap-1 rounded-full";
+    toggler.textContent = "EN | RU";
+    bar.append(toggler);
+
+    toggler.addEventListener("click", async () => {
+      if (this.isRussian) {
+        this.setEng();
+        toggler.classList.remove("LTR-toggler__active-RU");
+        toggler.classList.add("LTR-toggler__active-EN");
+      } else {
+        await this.setRus();
+        toggler.classList.remove("LTR-toggler__active-EN");
+        toggler.classList.add("LTR-toggler__active-RU");
+      }
+    });
   }
 
   saveImages() {
@@ -242,9 +354,7 @@ class UIEditor {
     try {
       this.descriptionKeywords = {};
       const keywords = this.rusDescription.querySelectorAll("[data-keyword]");
-      this.localKeywords = (await chrome.storage.local.get(KEYWORDS))[
-        KEYWORDS
-      ];
+      this.localKeywords = await this.LSM.getKeywords();
 
       for (const keyword of keywords) {
         const id = keyword.dataset.keyword;
@@ -257,22 +367,26 @@ class UIEditor {
   }
 
   async setRus() {
-    await this.saveKeywords();
+    try {
+      await this.saveKeywords();
 
-    if (this.isRussianSaved) {
-      const currTitle = document.querySelector(".text-title-large");
-      const currDescription = document.querySelector(
-        '[data-track-load="description_content"]'
-      );
-      currTitle.textContent = this.rusTitle;
-      currDescription.innerHTML = this.rusDescription.innerHTML;
-      this.createListenersForKeywords(currDescription);
-    } else {
-      this.changeTitle();
-      this.changeDescription();
+      if (this.isRussianSaved) {
+        const currTitle = document.querySelector(".text-title-large");
+        const currDescription = document.querySelector(
+          '[data-track-load="description_content"]'
+        );
+        currTitle.textContent = this.rusTitle;
+        currDescription.innerHTML = this.rusDescription.innerHTML;
+        this.createListenersForKeywords(currDescription);
+      } else {
+        this.changeTitle();
+        this.changeDescription();
+      }
+  
+      this.isRussian = true;
+    } catch (e) {
+      console.error(e);
     }
-
-    this.isRussian = true;
   }
 
   setEng() {
@@ -324,44 +438,24 @@ class UIEditor {
     this.isRussianSaved = true;
   }
 
-  createPopupElement(rusName, description) {
+  createTooltipElement(rusName, description) {
     const relative = document.querySelector("#__next");
-    const el = document.createElement("div");
-    const elStyle = `
-      z-index: 40;
-      display: block;
-      opacity: 0;
-      visibility: hidden;
-      position: fixed;
-      box-shadow: 0 0 #0000,0 0 #0000,0 0 #0000,0 0 #0000,0px 1px 3px #0000003d,0px 6px 16px #00000029;
-      transition: opacity 0.15s ease;
-      font-weight: initial;
-      font-style: initial;
-      color: initial;
-    `;
-    el.style = elStyle;
-    
-    el.innerHTML = `<div class="custom-keyword-popup" style="background-color: #363636;border: 1px solid rgb(255,255,255,.1);border-radius: 7px;max-width: 385px;">  <div class="popup-title" style="font-weight: 600;padding: 16px;border-bottom: 1px solid rgb(255,255,255,.1);">${rusName}</div>  <div class="popup-content" style="padding: 16px;">${description}</div></div>`;
-    const pElements = el.querySelectorAll("p");
-    for (let i = 0; i < pElements.length - 1; i++) {
-      pElements[i].style = "margin-bottom: 0.5rem;";
-    }
-    const codeElements = el.querySelectorAll("code");
-    for (const codeEl of codeElements) {
-      codeEl.style = `
-        background-color: #ffffff1a;
-        color: #eff1f6bf;
-        border: 1px solid #f7faff1f;
-        padding: 0.25rem;
-        border-radius: 0.5rem;
-        font-family: Menlo,sans-serif;
-        font-size: .75rem;
-        line-height: 1.5rem;
-      `;
-    }
-    relative.insertAdjacentElement("beforeend", el);
+    const tooltip = document.createElement("div");
+    tooltip.classList.add("tooltip-container");
 
-    return el;
+    const tooltipTitle = document.createElement("div");
+    tooltipTitle.classList.add("tooltip-title");
+    tooltipTitle.textContent = rusName;
+
+    const tooltipDescription = document.createElement("div");
+    tooltipDescription.classList.add("tooltip-description");
+    tooltipDescription.innerHTML = description;
+    
+    tooltip.append(tooltipTitle, tooltipDescription);
+
+    relative.insertAdjacentElement("beforeend", tooltip);
+
+    return tooltip;
   }
 
   createListenersForKeywords(descriptionContainer) {
@@ -371,39 +465,39 @@ class UIEditor {
       const id = keywordElement.dataset.keyword;
       const k = this.localKeywords[id];
       const { rusName, description } = k;
-      const popupElement = this.createPopupElement(rusName, description);
+      const tooltipElement = this.createTooltipElement(rusName, description);
 
       let timer;
       keywordElement.addEventListener("pointerenter", () => {
         timer = setTimeout(() => {
-          this.keywordListener(keywordElement, popupElement);
+          this.keywordListener(keywordElement, tooltipElement);
         }, 500);
       });
       keywordElement.addEventListener("pointerleave", () => {
         clearTimeout(timer);
         setTimeout(() => {
-          popupElement.style.opacity = "0";
-          popupElement.style.visibility = "hidden";
+          tooltipElement.style.opacity = "0";
+          tooltipElement.style.visibility = "hidden";
         }, 500);
       });
     }
   }
 
-  keywordListener(keywordElement, popupElement) {
+  keywordListener(keywordElement, tooltipElement) {
     const keywordRect = keywordElement.getBoundingClientRect();
-    const popupRect = popupElement.getBoundingClientRect();
+    const tooltipRect = tooltipElement.getBoundingClientRect();
 
     const center = keywordRect.left + keywordRect.width / 2;
 
-    let popupX = center - popupRect.width / 2;
-    let popupY = keywordRect.top - popupRect.height - 10;
+    let tooltipX = center - tooltipRect.width / 2;
+    let tooltipY = keywordRect.top - tooltipRect.height - 10;
 
-    if (popupX < 11) popupX = 11;
-    if (popupY < 0) popupY = keywordRect.bottom + 10;
+    if (tooltipX < 11) tooltipX = 11;
+    if (tooltipY < 0) tooltipY = keywordRect.bottom + 10;
 
-    popupElement.style.left = `${popupX}px`;
-    popupElement.style.top = `${popupY}px`;
-    popupElement.style.opacity = "1";
-    popupElement.style.visibility = "visible";
+    tooltipElement.style.left = `${tooltipX}px`;
+    tooltipElement.style.top = `${tooltipY}px`;
+    tooltipElement.style.opacity = "1";
+    tooltipElement.style.visibility = "visible";
   }
 }
