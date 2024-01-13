@@ -1,4 +1,4 @@
-# [LeetCode to Russian](https://chromewebstore.google.com/detail/leetcode-to-russian/omcekcjkhekdifemjbknfbijiabbjhmm)
+# [LeetCode to Russian](https://chromewebstore.google.com/detail/leetcode-to-russian/omcekcjkhekdifemjbknfbijiabbjhmm) (ctrl+click)
 
 Расширение переводит задачи LeetCode на русский язык. В отличие от автоматических средств, расширение предоставляет понятные и адаптированные переводы задач, так как они выполняются вручную.
 
