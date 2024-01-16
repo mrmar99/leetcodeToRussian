@@ -116,17 +116,13 @@ class UIEditor {
 
   changeDescription() {
     const nonBlockTags = new Set(["STRONG", "EM", "B", "I", "U"]);
-    for (const dChild of this.engDescription.children) {
-      const currKeywords = dChild.querySelectorAll("[data-keyword]");
-      if (currKeywords.length) {
-        for (const currK of currKeywords) {
-          let textEl = currK;
-          while (!(textEl instanceof Text) && !nonBlockTags.has(textEl.tagName)) {
-            textEl = textEl.childNodes[0];
-          }
-          dChild.replaceChild(textEl, currK);
-        }
+    const currKeywords = this.engDescription.querySelectorAll("[data-keyword]");
+    for (const currK of currKeywords) {
+      let textEl = currK;
+      while (!(textEl instanceof Text) && !nonBlockTags.has(textEl.tagName)) {
+        textEl = textEl.childNodes[0];
       }
+      currK.replaceWith(textEl);
     }
 
     for (const i in this.descriptionImages) {
