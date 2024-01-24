@@ -97,3 +97,14 @@
 .tooltip-description > div p:last-child, .tooltip-description > p:last-child {
   margin-bottom: 0;
 }
+
+.LTR-custom-translations-btn div {
+  background-color: #0da291;
+  color: white;
+  transition: background-color .1s ease-in;
+}
+
+.LTR-custom-translations-btn div:hover {
+  background-color: #08675b;
+  transition: background-color .1s ease-out;
+}
