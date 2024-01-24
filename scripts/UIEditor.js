@@ -1,7 +1,9 @@
 class UIEditor {
-  constructor(rusTitle, rusDescription) {
+  constructor() {
     this.LSM = new LocalStorageManager();
+  }
 
+  initProblemPage(rusTitle, rusDescription) {
     if (arguments.length < 2)
       throw new Error("Необходимо передать все аргументы");
 
@@ -18,6 +20,18 @@ class UIEditor {
     );
 
     this.saveImages();
+  }
+
+  initProblemsetPage(topicBtnsEl) {
+    const a = document.createElement("a");
+    a.href = "https://leetcode-to-russian-api.vercel.app/infopage/";
+    a.target = "_blank";
+    a.className = "relative LTR-custom-translations-btn";
+    const div = document.createElement("div");
+    div.className = "flex items-center space-x-2 whitespace-nowrap rounded-full px-4 py-[10px] pointer-event-none text-base leading-tight shadow-level2 dark:shadow-dark-level2";
+    div.textContent = "Переводы";
+    a.append(div);
+    topicBtnsEl.insertAdjacentElement("afterbegin", a);
   }
 
   async setToggler() {

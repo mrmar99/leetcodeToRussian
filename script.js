@@ -25,14 +25,19 @@ window.addEventListener("load", function f() {
   const title = document.querySelector(".text-title-large");
   const description = document.querySelector('[data-track-load="description_content"]');
 
+  const topicBtnLink = "/problemset/all-code-essentials";
+  const topicBtnEl = document.querySelector(`a[href="${topicBtnLink}"]`);
+
   if (title && description) {
-    main();
+    problemPage();
+  } else if (topicBtnEl) {
+    problemsetPage(topicBtnEl.parentNode);
   } else {
     triesCnt <= MAX_TRIES ? setTimeout(dispatchLoadEvent, DELAY) : authOrOldAlert();
   }
 });
 
-async function main() {
+async function problemPage() {
   try {
     lastProblem = window.location.href.slice(baseUrl.length).split("/")[0];
 
@@ -56,10 +61,16 @@ async function main() {
     t = translations[id];
 
     const { rusTitle, description } = t;
-    const ui = new UIEditor(rusTitle, description.replace(/\\n/g, "\n"));
+    const ui = new UIEditor();
+    ui.initProblemPage(rusTitle, description.replace(/\\n/g, "\n"));
     await ui.setRus();
     await ui.setToggler();
   } catch (e) {
     console.error(e);
   }
+}
+
+function problemsetPage(topicBtnsEl) {
+  const ui = new UIEditor();
+  ui.initProblemsetPage(topicBtnsEl);
 }
