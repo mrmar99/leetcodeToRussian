@@ -43,16 +43,24 @@ class UIEditor {
   }
 
   saveImages() {
-    this.descriptionImages = {};
-    for (let i = 0; i < this.engDescription.children.length; i++) {
-      if (this.engDescription.children[i].tagName === "IMG") {
-        this.descriptionImages[i] = this.engDescription.children[i];
-      } else {
-        const img = this.engDescription.children[i].querySelector("img");
-        if (img) {
-          this.descriptionImages[i] = this.engDescription.children[i];
-        }
+    this.descriptionImages = [];
+    const imgs = this.engDescription.querySelectorAll("img");
+
+    for (const img of imgs) {
+      const imgPath = [];
+
+      let tmpParent = img.parentNode, tmpChild = img;
+      while (tmpParent !== this.engDescription) {
+        const index = Array.from(tmpParent.children).indexOf(tmpChild);
+        imgPath.push(index);
+        tmpChild = tmpParent;
+        tmpParent = tmpParent.parentNode;
       }
+
+      const index = Array.from(tmpParent.children).indexOf(tmpChild);
+      imgPath.push(index);
+
+      this.descriptionImages.push({ img: img.cloneNode(true), imgPath: imgPath.reverse() });
     }
   }
 
@@ -125,9 +133,22 @@ class UIEditor {
       currK.replaceWith(textEl);
     }
 
-    for (const i in this.descriptionImages) {
-      const img = this.descriptionImages[i];
-      this.rusDescription.insertBefore(img, this.rusDescription.children[i]);
+    for (const descriptionImage of this.descriptionImages) {
+      const { img, imgPath } = descriptionImage;
+
+      let parent = this.rusDescription;
+      for (let i = 0; i < imgPath.length - 1; i++) {
+        parent = parent.children[imgPath[i]];
+      }
+      
+      const idx = imgPath.at(-1);
+      if (parent !== this.rusDescription) {
+        const textNodesCnt = Array.from(parent.childNodes)
+          .reduce((a, e) => a += e instanceof Text ? 1 : 0, 0);
+        parent.insertBefore(img, parent.childNodes[idx + textNodesCnt - 1]);
+      } else {
+        parent.insertBefore(img, parent.children[idx]);
+      }
     }
 
     const description = this.engDescription.cloneNode(true);
@@ -135,11 +156,6 @@ class UIEditor {
     this.rusDescription = this.engDescription;
     this.createListenersForKeywords(this.rusDescription);
     this.engDescription = description;
-
-    for (const i in this.descriptionImages) {
-      const img = this.descriptionImages[i];
-      this.engDescription.insertBefore(img, this.engDescription.children[i]);
-    }
 
     this.isRussianSaved = true;
   }
