@@ -49,14 +49,24 @@ class UIEditor {
     for (const img of imgs) {
       const imgPath = [];
 
-      let tmpParent = img.parentNode, tmpChild = img;
+      let tmpParent = img.parentNode, tmpChild = img, oneChildCnt = 0;
       while (tmpParent !== this.engDescription) {
-        const index = Array.from(tmpParent.children).indexOf(tmpChild);
-        imgPath.push(index);
+        const tmpChildren = tmpParent.children;
+        if (tmpChildren.length === 1) {
+          imgPath.push(0);
+          oneChildCnt++;
+        } else {
+          const index = Array.from(tmpParent.children).indexOf(tmpChild);
+          imgPath.push(index);
+        }
         tmpChild = tmpParent;
         tmpParent = tmpParent.parentNode;
       }
 
+      if (oneChildCnt === imgPath.length) {
+        imgPath.length = 0;
+      }
+      
       const index = Array.from(tmpParent.children).indexOf(tmpChild);
       imgPath.push(index);
 
@@ -140,7 +150,7 @@ class UIEditor {
       for (let i = 0; i < imgPath.length - 1; i++) {
         parent = parent.children[imgPath[i]];
       }
-      
+
       const idx = imgPath.at(-1);
       if (parent !== this.rusDescription) {
         const textNodesCnt = Array.from(parent.childNodes)
