@@ -56,7 +56,7 @@ class UIEditor {
           imgPath.push(0);
           oneChildCnt++;
         } else {
-          const index = Array.from(tmpParent.children).indexOf(tmpChild);
+          const index = Array.from(tmpChildren).indexOf(tmpChild);
           imgPath.push(index);
         }
         tmpChild = tmpParent;
