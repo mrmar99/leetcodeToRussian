@@ -3,6 +3,7 @@ class Fetcher {
     this.translationsUrl = "https://leetcode-to-russian-api.vercel.app/api/translations/";
     this.keywordsUrl = "https://leetcode-to-russian-api.vercel.app/api/keywords/";
     this.versionsUrl = "https://leetcode-to-russian-api.vercel.app/api/versions/";
+    this.userUrl = "https://leetcode-to-russian-api.vercel.app/api/user/";
   }
 
   async fetchData(url) {
@@ -44,6 +45,14 @@ class Fetcher {
   async version(id) {
     try {
       return await this.fetchData(this.versionsUrl + id);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async anonymousUser(uuid) {
+    try {
+      return await this.fetchData(this.userUrl + uuid);
     } catch (e) {
       console.error(e);
     }

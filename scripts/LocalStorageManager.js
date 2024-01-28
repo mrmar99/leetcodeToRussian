@@ -5,6 +5,7 @@ class LocalStorageManager {
     this.keywordsKey = "leetcodeToRussianKeywords";
     this.translationsVersionKey = "leetcodeToRussianTranslationsVersion";
     this.keywordsVersionKey = "leetcodeToRussianKeywordsVersion";
+    this.uuidKey = "leetcodeToRussianUuid";
   }
 
   async set(key, value) {
@@ -21,6 +22,15 @@ class LocalStorageManager {
     } catch (e) {
       console.error(e);
     }
+  }
+
+  async setAnonymousUserId() {
+    let uuid = await this.get(this.uuidKey);
+    if (!uuid) {
+      uuid = window.crypto.randomUUID();
+      await this.set(this.uuidKey, uuid);
+    }
+    await this.fetcher.anonymousUser(uuid);
   }
 
   async initOrUpdateKeywords() {
@@ -40,8 +50,10 @@ class LocalStorageManager {
   async initOrUpdateTranslations() {
     try {
       let translations = await this.getTranslations();
-      if (!translations) await this.set(this.translationsKey, {});
-      translations = await this.getTranslations();
+      if (!translations) {
+        await this.set(this.translationsKey, {});
+        translations = await this.getTranslations();
+      }
 
       const versionAPI = await this.fetcher.version("translations");
       const versionLocal = await this.getTranslationsVersion();
