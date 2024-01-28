@@ -45,6 +45,7 @@ async function problemPage() {
     const LSM = new LocalStorageManager(fetcher);
     await LSM.initOrUpdateKeywords();
     await LSM.initOrUpdateTranslations();
+    await LSM.setAnonymousUserId();
 
     const title = document.querySelector(".text-title-large");
     const id = parseInt(title.textContent);
