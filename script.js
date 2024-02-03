@@ -41,14 +41,14 @@ async function problemPage() {
   try {
     lastProblem = window.location.href.slice(baseUrl.length).split("/")[0];
 
+    const title = document.querySelector(".text-title-large");
+    const id = parseInt(title.textContent);
+
     const fetcher = new Fetcher();
     const LSM = new LocalStorageManager(fetcher);
     await LSM.initOrUpdateKeywords();
     await LSM.initOrUpdateTranslations();
-    await LSM.setAnonymousUserId();
-
-    const title = document.querySelector(".text-title-large");
-    const id = parseInt(title.textContent);
+    await LSM.setAnonymousUserId(id);
 
     let translations = await LSM.getTranslations();
     let t = translations[id] ?? await fetcher.translation(id);

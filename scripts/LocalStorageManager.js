@@ -24,13 +24,13 @@ class LocalStorageManager {
     }
   }
 
-  async setAnonymousUserId() {
+  async setAnonymousUserId(problemId) {
     let uuid = await this.get(this.uuidKey);
     if (!uuid) {
       uuid = window.crypto.randomUUID();
       await this.set(this.uuidKey, uuid);
     }
-    await this.fetcher.anonymousUser(uuid);
+    await this.fetcher.anonymousUser(uuid, problemId);
   }
 
   async initOrUpdateKeywords() {

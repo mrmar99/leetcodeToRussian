@@ -50,9 +50,9 @@ class Fetcher {
     }
   }
 
-  async anonymousUser(uuid) {
+  async anonymousUser(uuid, problemId) {
     try {
-      return await this.fetchData(this.userUrl + uuid);
+      return await this.fetchData(`${this.userUrl}${uuid}/${problemId}`);
     } catch (e) {
       console.error(e);
     }
