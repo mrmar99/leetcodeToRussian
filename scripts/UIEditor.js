@@ -37,7 +37,7 @@ class UIEditor {
   async setToggler() {
     const bar = document.querySelector(
       '[data-track-load="description_content"]'
-    ).previousElementSibling;
+    ).parentNode.previousElementSibling;
     const toggler = document.createElement("div");
     toggler.className = "LTR-toggler relative inline-flex items-center justify-center text-caption px-2 py-1 gap-1 rounded-full";
     toggler.textContent = "EN | RU";
