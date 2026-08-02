@@ -1,5 +1,6 @@
 import { Fetcher } from "./Fetcher";
 import { LocalStorageManager } from "./LocalStorageManager";
+import * as S from "./selectors";
 import type { KeywordEntry, KeywordsMap } from "./types";
 
 interface SavedImage {
@@ -20,9 +21,39 @@ export class UIEditor {
   descriptionImages!: SavedImage[];
   descriptionKeywords!: DescriptionKeywords;
   localKeywords!: KeywordsMap;
+  /** Узел описания, на который встал перевод. React подменяет его при перерисовке. */
+  mountedDescription: Element | null = null;
+  toggler: HTMLElement | null = null;
 
   constructor() {
     this.LSM = new LocalStorageManager(new Fetcher());
+  }
+
+  /**
+   * Снимает всё, что расширение добавило на страницу. Вызывается перед перерисовкой
+   * после клиентской навигации, иначе тумблеры и тултипы копятся.
+   */
+  static removeInjectedUI() {
+    const injected = document.querySelectorAll(
+      `.${S.TOGGLER_CLASS}, .${S.TOOLTIP_CLASS}, .${S.TRANSLATIONS_BTN_CLASS}`
+    );
+
+    for (const el of injected) {
+      el.remove();
+    }
+  }
+
+  /**
+   * Стоят ли правки расширения на текущем DOM. Становится `false`, когда React
+   * пересоздаёт описание — например, при возврате с вкладки решений.
+   */
+  isMounted(): boolean {
+    return (
+      this.mountedDescription !== null &&
+      this.mountedDescription === document.querySelector(S.DESCRIPTION) &&
+      this.toggler !== null &&
+      this.toggler.isConnected
+    );
   }
 
   initProblemPage(rusTitle: string, rusDescription: string) {
@@ -36,10 +67,9 @@ export class UIEditor {
     this.rusDescription = document.createElement("div");
     this.rusDescription.innerHTML = rusDescription.replace(/ /g, " ");
 
-    this.engTitle = document.querySelector(".text-title-large") as HTMLElement;
-    this.engDescription = document.querySelector(
-      '[data-track-load="description_content"]'
-    ) as HTMLElement;
+    this.engTitle = document.querySelector(S.TITLE) as HTMLElement;
+    this.engDescription = document.querySelector(S.DESCRIPTION) as HTMLElement;
+    this.mountedDescription = this.engDescription;
 
     this.saveImages();
   }
@@ -49,7 +79,7 @@ export class UIEditor {
 
     a.href = "https://leetcode-to-russian-api.vercel.app/infopage/";
     a.target = "_blank";
-    a.className = "relative LTR-custom-translations-btn";
+    a.className = `relative ${S.TRANSLATIONS_BTN_CLASS}`;
 
     const div = document.createElement("div");
 
@@ -61,27 +91,35 @@ export class UIEditor {
 
   async setToggler() {
     const bar = (
-      document.querySelector('[data-track-load="description_content"]')!
-        .parentNode!.parentNode as Element
+      document.querySelector(S.DESCRIPTION)!.parentNode!.parentNode as Element
     ).previousElementSibling!;
+
+    // При перемонтировании старый тумблер удаляется, чтобы не появился второй.
+    bar.querySelector(`.${S.TOGGLER_CLASS}`)?.remove();
 
     const toggler = document.createElement("div");
 
-    toggler.className = "LTR-toggler relative inline-flex items-center justify-center text-caption px-2 py-1 gap-1 rounded-full";
+    toggler.className = `${S.TOGGLER_CLASS} relative inline-flex items-center justify-center text-caption px-2 py-1 gap-1 rounded-full`;
     toggler.textContent = "EN | RU";
+    this.setTogglerState(toggler);
     bar.append(toggler);
 
     toggler.addEventListener("click", async () => {
       if (this.isRussian) {
         this.setEng();
-        toggler.classList.remove("LTR-toggler__active-RU");
-        toggler.classList.add("LTR-toggler__active-EN");
       } else {
         await this.setRus();
-        toggler.classList.remove("LTR-toggler__active-EN");
-        toggler.classList.add("LTR-toggler__active-RU");
       }
+
+      this.setTogglerState(toggler);
     });
+
+    this.toggler = toggler;
+  }
+
+  setTogglerState(toggler: HTMLElement) {
+    toggler.classList.toggle(`${S.TOGGLER_CLASS}__active-RU`, this.isRussian);
+    toggler.classList.toggle(`${S.TOGGLER_CLASS}__active-EN`, !this.isRussian);
   }
 
   saveImages() {
@@ -146,10 +184,8 @@ export class UIEditor {
       await this.saveKeywords();
 
       if (this.isRussianSaved) {
-        const currTitle = document.querySelector(".text-title-large") as HTMLElement;
-        const currDescription = document.querySelector(
-          '[data-track-load="description_content"]'
-        ) as HTMLElement;
+        const currTitle = document.querySelector(S.TITLE) as HTMLElement;
+        const currDescription = document.querySelector(S.DESCRIPTION) as HTMLElement;
 
         currTitle.textContent = this.rusTitle;
         currDescription.innerHTML = this.rusDescription.innerHTML;
@@ -166,10 +202,8 @@ export class UIEditor {
   }
 
   setEng() {
-    const currTitle = document.querySelector(".text-title-large") as HTMLElement;
-    const currDescription = document.querySelector(
-      '[data-track-load="description_content"]'
-    ) as HTMLElement;
+    const currTitle = document.querySelector(S.TITLE) as HTMLElement;
+    const currDescription = document.querySelector(S.DESCRIPTION) as HTMLElement;
 
     currTitle.textContent = this.engTitle.textContent;
     this.rusDescription = this.rusDescription.cloneNode(true) as HTMLElement;
@@ -232,10 +266,10 @@ export class UIEditor {
   }
 
   createTooltipElement(rusName: string, description: string) {
-    const relative = document.querySelector("#__next")!;
+    const relative = document.querySelector(S.APP_ROOT)!;
     const tooltip = document.createElement("div");
 
-    tooltip.classList.add("tooltip-container");
+    tooltip.classList.add(S.TOOLTIP_CLASS);
 
     const tooltipTitle = document.createElement("div");
 

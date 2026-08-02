@@ -14,7 +14,7 @@ export default tseslint.config(
     rules: {
       // TypeScript сам проверяет существование идентификаторов
       "no-undef": "off",
-      // `!` расставлены осознанно там, где старый код полагался на наличие узлов
+      // `!` расставлены там, где код полагается на наличие узлов в разметке
       "@typescript-eslint/no-non-null-assertion": "off",
 
       "@stylistic/padding-line-between-statements": [
