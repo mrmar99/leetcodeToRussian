@@ -1,62 +1,65 @@
+import { HttpError, NetworkError, ParseError } from "./errors";
 import type { Keyword, Translation } from "./types";
 
+const BASE_URL = "https://leetcode-to-russian-api.vercel.app/api";
+const TIMEOUT = 8000;
+
+const URLS = {
+  translations: `${BASE_URL}/translations/`,
+  keywords: `${BASE_URL}/keywords/`,
+  versions: `${BASE_URL}/versions/`,
+  user: `${BASE_URL}/user/`,
+};
+
+/**
+ * Один запрос к API. Бросает `NetworkError`, `HttpError` или `ParseError` —
+ * решение, что показать пользователю, принимает вызывающий код.
+ */
+async function request<T>(url: string): Promise<T> {
+  let res: Response;
+
+  try {
+    res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT) });
+  } catch (cause) {
+    throw new NetworkError(url, { cause });
+  }
+
+  if (!res.ok) throw new HttpError(url, res.status);
+
+  try {
+    const { data } = await res.json();
+
+    return data as T;
+  } catch (cause) {
+    throw new ParseError(url, { cause });
+  }
+}
+
 export class Fetcher {
-  translationsUrl = "https://leetcode-to-russian-api.vercel.app/api/translations/";
-  keywordsUrl = "https://leetcode-to-russian-api.vercel.app/api/keywords/";
-  versionsUrl = "https://leetcode-to-russian-api.vercel.app/api/versions/";
-  userUrl = "https://leetcode-to-russian-api.vercel.app/api/user/";
-
-  async fetchData<T>(url: string): Promise<T | undefined> {
+  /** `null` означает, что задача ещё не переведена, а не сбой запроса. */
+  async translation(id: number): Promise<Translation | null> {
     try {
-      const res = await fetch(url);
-      const resJson = await res.json();
-
-      return resJson.data as T;
+      return (await request<Translation | null>(URLS.translations + id)) ?? null;
     } catch (e) {
-      console.error(e);
+      if (e instanceof HttpError && e.status === 404) return null;
+
+      throw e;
     }
   }
 
-  async translations(ids: string[]): Promise<Translation[] | undefined> {
-    try {
-      return await this.fetchData<Translation[]>(this.translationsUrl + `?ids=${ids}`);
-    } catch (e) {
-      console.error(e);
-    }
+  async translations(ids: string[]): Promise<Translation[]> {
+    return request<Translation[]>(`${URLS.translations}?ids=${ids}`);
   }
 
-  async translation(id: number): Promise<Translation | undefined> {
-    try {
-      const res = await fetch(this.translationsUrl + id);
-      const resJson = await res.json();
-
-      return resJson.data as Translation;
-    } catch (e) {
-      console.error(e);
-    }
+  async keywords(): Promise<Keyword[]> {
+    return request<Keyword[]>(URLS.keywords);
   }
 
-  async keywords(): Promise<Keyword[] | undefined> {
-    try {
-      return await this.fetchData<Keyword[]>(this.keywordsUrl);
-    } catch (e) {
-      console.error(e);
-    }
+  async version(id: "keywords" | "translations"): Promise<number> {
+    return request<number>(URLS.versions + id);
   }
 
-  async version(id: "keywords" | "translations"): Promise<number | undefined> {
-    try {
-      return await this.fetchData<number>(this.versionsUrl + id);
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
-  async anonymousUser(uuid: string, problemId: number): Promise<unknown> {
-    try {
-      return await this.fetchData(`${this.userUrl}${uuid}/${problemId}`);
-    } catch (e) {
-      console.error(e);
-    }
+  async anonymousUser(uuid: string, problemId: number): Promise<void> {
+    await request(`${URLS.user}${uuid}/${problemId}`);
   }
 }

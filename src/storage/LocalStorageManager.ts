@@ -1,6 +1,7 @@
 import { browser } from "wxt/browser";
 import type { Fetcher } from "@/api/Fetcher";
-import type { KeywordsMap, Translation, TranslationsMap } from "@/api/types";
+import type { Translation } from "@/api/types";
+import type { KeywordsMap, TranslationsMap } from "./types";
 
 export class LocalStorageManager {
   fetcher: Fetcher;
@@ -30,56 +31,63 @@ export class LocalStorageManager {
     }
   }
 
+  /** Сбой отправки не должен мешать показу перевода: аналитика необязательна. */
   async setAnonymousUserId(problemId: number): Promise<void> {
-    let uuid = await this.get<string>(this.uuidKey);
+    try {
+      let uuid = await this.get<string>(this.uuidKey);
 
-    if (!uuid) {
-      uuid = window.crypto.randomUUID();
-      await this.set(this.uuidKey, uuid);
+      if (!uuid) {
+        uuid = window.crypto.randomUUID();
+        await this.set(this.uuidKey, uuid);
+      }
+
+      await this.fetcher.anonymousUser(uuid, problemId);
+    } catch (e) {
+      console.warn("Не удалось отправить анонимный идентификатор", e);
     }
-
-    await this.fetcher.anonymousUser(uuid, problemId);
   }
 
+  /** При сбое обновления остаётся прежний кеш — это лучше, чем отсутствие перевода. */
   async initOrUpdateKeywords(): Promise<void> {
     try {
       const versionAPI = await this.fetcher.version("keywords");
       const versionLocal = await this.getKeywordsVersion();
 
-      if (!versionLocal || versionLocal < versionAPI!) {
+      if (!versionLocal || versionLocal < versionAPI) {
         await this.setKeywords();
         await this.setKeywordsVersion(versionAPI);
       }
     } catch (e) {
-      console.error(e);
+      console.warn("Термины не обновлены, используется кеш", e);
     }
   }
 
+  /** При сбое обновления остаётся прежний кеш — это лучше, чем отсутствие перевода. */
   async initOrUpdateTranslations(): Promise<void> {
     try {
       let translations = await this.getTranslations();
 
       if (!translations) {
-        await this.set(this.translationsKey, {});
-        translations = await this.getTranslations();
+        translations = {};
+        await this.set(this.translationsKey, translations);
       }
 
       const versionAPI = await this.fetcher.version("translations");
       const versionLocal = await this.getTranslationsVersion();
 
-      if (!versionLocal || versionLocal < versionAPI!) {
-        const tIds = Object.keys(translations!);
+      if (!versionLocal || versionLocal < versionAPI) {
+        const tIds = Object.keys(translations);
 
         if (tIds.length) {
           const fetchedTranslations = await this.fetcher.translations(tIds);
 
-          translations = await this.setTranslations(fetchedTranslations!, translations!);
+          await this.setTranslations(fetchedTranslations, translations);
         }
 
         await this.setTranslationsVersion(versionAPI);
       }
     } catch (e) {
-      console.error(e);
+      console.warn("Переводы не обновлены, используется кеш", e);
     }
   }
 
@@ -118,7 +126,7 @@ export class LocalStorageManager {
 
       const keywordsToSave: KeywordsMap = {};
 
-      for (const k of keywords!) {
+      for (const k of keywords) {
         const { id, rusName, description } = k;
 
         keywordsToSave[id] = { rusName, description };

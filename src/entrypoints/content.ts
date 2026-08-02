@@ -1,12 +1,13 @@
 import { defineContentScript } from "wxt/utils/define-content-script";
 import { Fetcher } from "@/api/Fetcher";
+import { ApiError } from "@/api/errors";
 import type { Translation } from "@/api/types";
 import { LocalStorageManager } from "@/storage/LocalStorageManager";
 import { observeDom } from "@/dom/observeDom";
 import { onLocationChange } from "@/dom/watchLocation";
 import { waitFor } from "@/dom/waitFor";
 import { UIEditor } from "@/ui/UIEditor";
-import { authOrOldAlert, problemNotFoundAlert } from "@/ui/alerts";
+import { authOrOldAlert, networkErrorAlert, problemNotFoundAlert } from "@/ui/alerts";
 import * as S from "@/ui/selectors";
 import "@/assets/style.css";
 
@@ -133,10 +134,26 @@ async function problemPage(isCurrent: () => boolean, signal: AbortSignal) {
     await LSM.initOrUpdateTranslations();
     await LSM.setAnonymousUserId(id);
 
-    let translations = await LSM.getTranslations();
-    let t = translations![id] ?? await fetcher.translation(id);
+    const translations = (await LSM.getTranslations()) ?? {};
+    let t: Translation | null;
 
-    // Пока шёл запрос, пользователь мог уйти на другую задачу.
+    try {
+      t = translations[id] ?? await fetcher.translation(id);
+    } catch (e) {
+      // Пока шёл запрос, пользователь мог уйти на другую задачу.
+      if (!isCurrent()) return;
+
+      // Сбой связи — не то же самое, что отсутствие перевода.
+      if (e instanceof ApiError) {
+        console.error(e);
+        networkErrorAlert();
+
+        return;
+      }
+
+      throw e;
+    }
+
     if (!isCurrent()) return;
 
     if (!t) {
@@ -145,8 +162,7 @@ async function problemPage(isCurrent: () => boolean, signal: AbortSignal) {
       return;
     }
 
-    translations = await LSM.setTranslations([t], translations!);
-    t = translations![id]!;
+    await LSM.setTranslations([t], translations);
 
     if (!isCurrent()) return;
 

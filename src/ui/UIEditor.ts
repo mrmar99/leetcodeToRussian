@@ -1,6 +1,6 @@
 import { Fetcher } from "@/api/Fetcher";
 import { LocalStorageManager } from "@/storage/LocalStorageManager";
-import type { KeywordsMap } from "@/api/types";
+import type { KeywordsMap } from "@/storage/types";
 import { Tooltip } from "./Tooltip";
 import { sanitize } from "./sanitize";
 import * as S from "./selectors";

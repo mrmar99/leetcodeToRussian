@@ -10,8 +10,5 @@ export interface Keyword {
   description: string;
 }
 
+/** Термин без идентификатора: в кеше он и так ключ. */
 export type KeywordEntry = Pick<Keyword, "rusName" | "description">;
-
-export type TranslationsMap = Record<string, Translation>;
-
-export type KeywordsMap = Record<string, KeywordEntry>;
