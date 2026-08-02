@@ -1,6 +1,6 @@
 import { browser } from "wxt/browser";
-import type { Fetcher } from "./Fetcher";
-import type { KeywordsMap, Translation, TranslationsMap } from "./types";
+import type { Fetcher } from "@/api/Fetcher";
+import type { KeywordsMap, Translation, TranslationsMap } from "@/api/types";
 
 export class LocalStorageManager {
   fetcher: Fetcher;

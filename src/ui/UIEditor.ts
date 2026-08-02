@@ -1,9 +1,9 @@
-import { Fetcher } from "./Fetcher";
-import { LocalStorageManager } from "./LocalStorageManager";
+import { Fetcher } from "@/api/Fetcher";
+import { LocalStorageManager } from "@/storage/LocalStorageManager";
+import type { KeywordsMap } from "@/api/types";
 import { Tooltip } from "./Tooltip";
 import { sanitize } from "./sanitize";
 import * as S from "./selectors";
-import type { KeywordsMap } from "./types";
 
 interface SavedImage {
   img: HTMLImageElement;

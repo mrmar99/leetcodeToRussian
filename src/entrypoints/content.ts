@@ -1,13 +1,13 @@
 import { defineContentScript } from "wxt/utils/define-content-script";
-import { Fetcher } from "@/lib/Fetcher";
-import { LocalStorageManager } from "@/lib/LocalStorageManager";
-import { UIEditor } from "@/lib/UIEditor";
-import { authOrOldAlert, problemNotFoundAlert } from "@/lib/alerts";
-import { observeDom } from "@/lib/observeDom";
-import { onLocationChange } from "@/lib/watchLocation";
-import { waitFor } from "@/lib/waitFor";
-import * as S from "@/lib/selectors";
-import type { Translation } from "@/lib/types";
+import { Fetcher } from "@/api/Fetcher";
+import type { Translation } from "@/api/types";
+import { LocalStorageManager } from "@/storage/LocalStorageManager";
+import { observeDom } from "@/dom/observeDom";
+import { onLocationChange } from "@/dom/watchLocation";
+import { waitFor } from "@/dom/waitFor";
+import { UIEditor } from "@/ui/UIEditor";
+import { authOrOldAlert, problemNotFoundAlert } from "@/ui/alerts";
+import * as S from "@/ui/selectors";
 import "@/assets/style.css";
 
 const PROBLEM_PATH = /^\/problems\/([^/]+)/;
