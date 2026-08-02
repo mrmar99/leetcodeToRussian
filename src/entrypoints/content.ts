@@ -9,7 +9,7 @@ import { observeDom } from "@/dom/observeDom";
 import { onLocationChange } from "@/dom/watchLocation";
 import { waitFor } from "@/dom/waitFor";
 import { UIEditor, type Lang } from "@/ui/UIEditor";
-import { authOrOldAlert, networkErrorAlert, problemNotFoundAlert } from "@/ui/alerts";
+import { authOrOldAlert, networkErrorAlert } from "@/ui/alerts";
 import { DEFAULT_LAYOUT } from "@/ui/defaultLayout";
 import { keepSuggestButtonMounted, problemTitleFrom } from "@/ui/suggestButton";
 import * as S from "@/ui/selectors";
@@ -174,9 +174,8 @@ async function problemPage(
 
     if (!isCurrent()) return;
 
+    // Задача не переведена. Вместо плашки показывается кнопка «Предложить перевод».
     if (!t) {
-      problemNotFoundAlert();
-
       if (uuid) {
         keepSuggestButtonMounted(
           layout,

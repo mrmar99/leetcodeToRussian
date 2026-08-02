@@ -16,39 +16,119 @@
   background: linear-gradient(to right, rgb(13, 162, 145) 50%, rgb(48 48 48) 50%);
 }
 
-.alert {
-  padding: 16px;
-  opacity: 1;
-  transition: opacity 0.3s ease-in;
-  max-width: 300px;
-  z-index: 999;
+.LTR-alert {
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
   position: fixed;
-  top: 10px;
-  left: 10px;
-  border-radius: 10px;
-  cursor: pointer;
-}
-
-.alert, .alert p {
-  font-weight: 600;
+  top: 16px;
+  left: 16px;
+  z-index: 999;
+  max-width: 380px;
+  padding: 16px;
+  border: 1px solid;
+  border-radius: 14px;
   font-size: 14px;
-  margin: 8px 0;
   line-height: 20px;
+  animation: LTR-alert-in .2s ease-out;
 }
 
-.error-alert {
-  border: 1px solid #f5c6cb;
-  background-color: #f8d7da;
-  color: #721c24;
+.LTR-alert__icon {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
 }
 
-.auth-or-old-alert {
-  border: 1px solid #ffeeba;
-  background-color: #fff3cd;
-  color: #856404;
+.LTR-alert__icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.LTR-alert__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.LTR-alert__title {
+  font-weight: 600;
+}
+
+.LTR-alert__description {
+  opacity: .85;
+}
+
+.LTR-alert__description ul {
+  margin: 0;
+  padding-left: 18px;
+  list-style: disc;
+}
+
+.LTR-alert__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 9999px;
+  background: none;
+  color: inherit;
+  opacity: .5;
+  cursor: pointer;
+  transition: opacity .1s ease-in;
+}
+
+.LTR-alert__close:hover {
+  opacity: 1;
+  transition: opacity .1s ease-out;
+}
+
+.LTR-alert__close svg {
+  width: 14px;
+  height: 14px;
+}
+
+.LTR-alert--warning {
+  border-color: #fdedd3;
+  background-color: #fefce8;
+  color: #936316;
+}
+
+.LTR-alert--warning .LTR-alert__icon {
+  background-color: #fdedd3;
+  color: #c4841d;
+}
+
+.LTR-alert--danger {
+  border-color: #fdd0df;
+  background-color: #fee7ef;
+  color: #920b3a;
+}
+
+.LTR-alert--danger .LTR-alert__icon {
+  background-color: #fdd0df;
+  color: #c20e4d;
+}
+
+@keyframes LTR-alert-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .tooltip-container {
