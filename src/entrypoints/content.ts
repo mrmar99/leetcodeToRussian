@@ -1,6 +1,6 @@
 import { defineContentScript } from "wxt/utils/define-content-script";
 import { Fetcher } from "@/api/Fetcher";
-import { ApiError } from "@/api/errors";
+import { ApiException } from "@/api/exceptions";
 import type { Translation } from "@/api/types";
 import { LocalStorageManager } from "@/storage/LocalStorageManager";
 import { observeDom } from "@/dom/observeDom";
@@ -144,7 +144,7 @@ async function problemPage(isCurrent: () => boolean, signal: AbortSignal) {
       if (!isCurrent()) return;
 
       // Сбой связи — не то же самое, что отсутствие перевода.
-      if (e instanceof ApiError) {
+      if (e instanceof ApiException) {
         console.error(e);
         networkErrorAlert();
 

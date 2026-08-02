@@ -4,7 +4,7 @@
  * Отдельный класс нужен, чтобы отличать проблемы связи от штатного «перевода нет»:
  * второе показывает пользователю совсем другое сообщение.
  */
-export class ApiError extends Error {
+export class ApiException extends Error {
   readonly url: string;
 
   constructor(message: string, url: string, options?: ErrorOptions) {

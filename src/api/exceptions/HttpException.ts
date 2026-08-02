@@ -1,7 +1,7 @@
-import { ApiError } from "./ApiError";
+import { ApiException } from "./ApiException";
 
 /** Сервер ответил, но статусом об ошибке. */
-export class HttpError extends ApiError {
+export class HttpException extends ApiException {
   readonly status: number;
 
   constructor(url: string, status: number) {

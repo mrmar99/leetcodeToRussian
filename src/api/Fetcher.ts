@@ -1,4 +1,4 @@
-import { HttpError, NetworkError, ParseError } from "./errors";
+import { HttpException, NetworkException, ParseException } from "./exceptions";
 import type { Keyword, Translation } from "./types";
 
 const BASE_URL = "https://leetcode-to-russian-api.vercel.app/api";
@@ -12,7 +12,7 @@ const URLS = {
 };
 
 /**
- * Один запрос к API. Бросает `NetworkError`, `HttpError` или `ParseError` —
+ * Один запрос к API. Бросает `NetworkException`, `HttpException` или `ParseException` —
  * решение, что показать пользователю, принимает вызывающий код.
  */
 async function request<T>(url: string): Promise<T> {
@@ -21,17 +21,17 @@ async function request<T>(url: string): Promise<T> {
   try {
     res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT) });
   } catch (cause) {
-    throw new NetworkError(url, { cause });
+    throw new NetworkException(url, { cause });
   }
 
-  if (!res.ok) throw new HttpError(url, res.status);
+  if (!res.ok) throw new HttpException(url, res.status);
 
   try {
     const { data } = await res.json();
 
     return data as T;
   } catch (cause) {
-    throw new ParseError(url, { cause });
+    throw new ParseException(url, { cause });
   }
 }
 
@@ -41,7 +41,7 @@ export class Fetcher {
     try {
       return (await request<Translation | null>(URLS.translations + id)) ?? null;
     } catch (e) {
-      if (e instanceof HttpError && e.status === 404) return null;
+      if (e instanceof HttpException && e.status === 404) return null;
 
       throw e;
     }
