@@ -1,31 +1,37 @@
-class LocalStorageManager {
-  constructor(fetcher) {
+import { browser } from "wxt/browser";
+import type { Fetcher } from "./Fetcher";
+import type { KeywordsMap, Translation, TranslationsMap } from "./types";
+
+export class LocalStorageManager {
+  fetcher: Fetcher;
+  translationsKey = "leetcodeToRussianTranslations";
+  keywordsKey = "leetcodeToRussianKeywords";
+  translationsVersionKey = "leetcodeToRussianTranslationsVersion";
+  keywordsVersionKey = "leetcodeToRussianKeywordsVersion";
+  uuidKey = "leetcodeToRussianUuid";
+
+  constructor(fetcher: Fetcher) {
     this.fetcher = fetcher;
-    this.translationsKey = "leetcodeToRussianTranslations";
-    this.keywordsKey = "leetcodeToRussianKeywords";
-    this.translationsVersionKey = "leetcodeToRussianTranslationsVersion";
-    this.keywordsVersionKey = "leetcodeToRussianKeywordsVersion";
-    this.uuidKey = "leetcodeToRussianUuid";
   }
 
-  async set(key, value) {
+  async set(key: string, value: unknown): Promise<void> {
     try {
-      await chrome.storage.local.set({ [key]: value });
+      await browser.storage.local.set({ [key]: value });
     } catch (e) {
       console.error(e);
     }
   }
 
-  async get(key) {
+  async get<T>(key: string): Promise<T | undefined> {
     try {
-      return (await chrome.storage.local.get(key))[key];
+      return (await browser.storage.local.get(key))[key] as T | undefined;
     } catch (e) {
       console.error(e);
     }
   }
 
-  async setAnonymousUserId(problemId) {
-    let uuid = await this.get(this.uuidKey);
+  async setAnonymousUserId(problemId: number): Promise<void> {
+    let uuid = await this.get<string>(this.uuidKey);
     if (!uuid) {
       uuid = window.crypto.randomUUID();
       await this.set(this.uuidKey, uuid);
@@ -33,12 +39,12 @@ class LocalStorageManager {
     await this.fetcher.anonymousUser(uuid, problemId);
   }
 
-  async initOrUpdateKeywords() {
+  async initOrUpdateKeywords(): Promise<void> {
     try {
       const versionAPI = await this.fetcher.version("keywords");
       const versionLocal = await this.getKeywordsVersion();
-  
-      if (!versionLocal || versionLocal < versionAPI) {
+
+      if (!versionLocal || versionLocal < versionAPI!) {
         await this.setKeywords();
         await this.setKeywordsVersion(versionAPI);
       }
@@ -47,7 +53,7 @@ class LocalStorageManager {
     }
   }
 
-  async initOrUpdateTranslations() {
+  async initOrUpdateTranslations(): Promise<void> {
     try {
       let translations = await this.getTranslations();
       if (!translations) {
@@ -58,11 +64,11 @@ class LocalStorageManager {
       const versionAPI = await this.fetcher.version("translations");
       const versionLocal = await this.getTranslationsVersion();
 
-      if (!versionLocal || versionLocal < versionAPI) {
-        const tIds = Object.keys(translations);
+      if (!versionLocal || versionLocal < versionAPI!) {
+        const tIds = Object.keys(translations!);
         if (tIds.length) {
           const fetchedTranslations = await this.fetcher.translations(tIds);
-          translations = await this.setTranslations(fetchedTranslations, translations);
+          translations = await this.setTranslations(fetchedTranslations!, translations!);
         }
         await this.setTranslationsVersion(versionAPI);
       }
@@ -71,13 +77,16 @@ class LocalStorageManager {
     }
   }
 
-  async setTranslations(fetchedTranslations, translations) {
+  async setTranslations(
+    fetchedTranslations: Translation[],
+    translations: TranslationsMap
+  ): Promise<TranslationsMap | undefined> {
     try {
-      const translationsToSave = {};
+      const translationsToSave: TranslationsMap = {};
       for (const t of fetchedTranslations) {
         translationsToSave[t.id] = t;
       }
-    
+
       translations = { ...translations, ...translationsToSave };
       await this.set(this.translationsKey, translations);
       console.log(`Переводы обновлены и сохранены в локальное хранилище`);
@@ -87,24 +96,24 @@ class LocalStorageManager {
     }
   }
 
-  async getTranslations() {
+  async getTranslations(): Promise<TranslationsMap | undefined> {
     try {
-      return await this.get(this.translationsKey);
+      return await this.get<TranslationsMap>(this.translationsKey);
     } catch (e) {
       console.error(e);
     }
   }
 
-  async setKeywords() {
+  async setKeywords(): Promise<void> {
     try {
       const keywords = await this.fetcher.keywords();
-  
-      const keywordsToSave = {};
-      for (const k of keywords) {
+
+      const keywordsToSave: KeywordsMap = {};
+      for (const k of keywords!) {
         const { id, rusName, description } = k;
         keywordsToSave[id] = { rusName, description };
       }
-  
+
       await this.set(this.keywordsKey, keywordsToSave);
       console.log("Термины обновлены и сохранены в локальное хранилище");
     } catch (e) {
@@ -112,15 +121,15 @@ class LocalStorageManager {
     }
   }
 
-  async getKeywords() {
+  async getKeywords(): Promise<KeywordsMap | undefined> {
     try {
-      return await this.get(this.keywordsKey);
+      return await this.get<KeywordsMap>(this.keywordsKey);
     } catch (e) {
       console.error(e);
     }
   }
 
-  async setTranslationsVersion(version) {
+  async setTranslationsVersion(version: number | undefined): Promise<void> {
     try {
       await this.set(this.translationsVersionKey, version);
     } catch (e) {
@@ -128,15 +137,15 @@ class LocalStorageManager {
     }
   }
 
-  async getTranslationsVersion() {
+  async getTranslationsVersion(): Promise<number | undefined> {
     try {
-      return await this.get(this.translationsVersionKey);
+      return await this.get<number>(this.translationsVersionKey);
     } catch (e) {
       console.error(e);
     }
   }
 
-  async setKeywordsVersion(version) {
+  async setKeywordsVersion(version: number | undefined): Promise<void> {
     try {
       await this.set(this.keywordsVersionKey, version);
     } catch (e) {
@@ -144,9 +153,9 @@ class LocalStorageManager {
     }
   }
 
-  async getKeywordsVersion() {
+  async getKeywordsVersion(): Promise<number | undefined> {
     try {
-      return await this.get(this.keywordsVersionKey);
+      return await this.get<number>(this.keywordsVersionKey);
     } catch (e) {
       console.error(e);
     }

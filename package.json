@@ -1,0 +1,22 @@
+{
+  "name": "leetcode-to-russian",
+  "description": "Перевод задач LeetCode на русский язык",
+  "private": true,
+  "version": "0.0.19",
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "dev:firefox": "wxt -b firefox",
+    "build": "wxt build",
+    "build:firefox": "wxt build -b firefox",
+    "zip": "wxt zip",
+    "zip:firefox": "wxt zip -b firefox",
+    "compile": "tsc --noEmit",
+    "postinstall": "wxt prepare"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.2.5",
+    "typescript": "^7.0.2",
+    "wxt": "^0.21.3"
+  }
+}

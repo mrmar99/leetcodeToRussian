@@ -1,9 +1,31 @@
-class UIEditor {
+import { Fetcher } from "./Fetcher";
+import { LocalStorageManager } from "./LocalStorageManager";
+import type { KeywordEntry, KeywordsMap } from "./types";
+
+interface SavedImage {
+  img: HTMLImageElement;
+  imgPath: number[];
+}
+
+type DescriptionKeywords = Record<string, KeywordEntry & { keywordElement: Element }>;
+
+export class UIEditor {
+  LSM: LocalStorageManager;
+  isRussianSaved = false;
+  isRussian = false;
+  rusTitle!: string;
+  rusDescription!: HTMLElement;
+  engTitle!: HTMLElement;
+  engDescription!: HTMLElement;
+  descriptionImages!: SavedImage[];
+  descriptionKeywords!: DescriptionKeywords;
+  localKeywords!: KeywordsMap;
+
   constructor() {
-    this.LSM = new LocalStorageManager();
+    this.LSM = new LocalStorageManager(new Fetcher());
   }
 
-  initProblemPage(rusTitle, rusDescription) {
+  initProblemPage(rusTitle: string, rusDescription: string) {
     if (arguments.length < 2)
       throw new Error("Необходимо передать все аргументы");
 
@@ -14,15 +36,15 @@ class UIEditor {
     this.rusDescription = document.createElement("div");
     this.rusDescription.innerHTML = rusDescription.replace(/ /g, " ");
 
-    this.engTitle = document.querySelector(".text-title-large");
+    this.engTitle = document.querySelector(".text-title-large") as HTMLElement;
     this.engDescription = document.querySelector(
       '[data-track-load="description_content"]'
-    );
+    ) as HTMLElement;
 
     this.saveImages();
   }
 
-  initProblemsetPage(topicBtnsEl) {
+  initProblemsetPage(topicBtnsEl: Element) {
     const a = document.createElement("a");
     a.href = "https://leetcode-to-russian-api.vercel.app/infopage/";
     a.target = "_blank";
@@ -35,9 +57,10 @@ class UIEditor {
   }
 
   async setToggler() {
-    const bar = document.querySelector(
-      '[data-track-load="description_content"]'
-    ).parentNode.parentNode.previousElementSibling;
+    const bar = (
+      document.querySelector('[data-track-load="description_content"]')!
+        .parentNode!.parentNode as Element
+    ).previousElementSibling!;
 
     const toggler = document.createElement("div");
     toggler.className = "LTR-toggler relative inline-flex items-center justify-center text-caption px-2 py-1 gap-1 rounded-full";
@@ -62,9 +85,9 @@ class UIEditor {
     const imgs = this.engDescription.querySelectorAll("img");
 
     for (const img of imgs) {
-      const imgPath = [];
+      const imgPath: number[] = [];
 
-      let tmpParent = img.parentNode, tmpChild = img, oneChildCnt = 0;
+      let tmpParent = img.parentNode as Element, tmpChild: Element = img, oneChildCnt = 0;
       while (tmpParent !== this.engDescription) {
         const tmpChildren = tmpParent.children;
         if (tmpChildren.length === 1) {
@@ -75,17 +98,17 @@ class UIEditor {
           imgPath.push(index);
         }
         tmpChild = tmpParent;
-        tmpParent = tmpParent.parentNode;
+        tmpParent = tmpParent.parentNode as Element;
       }
 
       if (oneChildCnt === imgPath.length) {
         imgPath.length = 0;
       }
-      
+
       const index = Array.from(tmpParent.children).indexOf(tmpChild);
       imgPath.push(index);
 
-      this.descriptionImages.push({ img: img.cloneNode(true), imgPath: imgPath.reverse() });
+      this.descriptionImages.push({ img: img.cloneNode(true) as HTMLImageElement, imgPath: imgPath.reverse() });
     }
   }
 
@@ -93,11 +116,11 @@ class UIEditor {
     try {
       this.descriptionKeywords = {};
       const keywords = this.rusDescription.querySelectorAll("[data-keyword]");
-      this.localKeywords = await this.LSM.getKeywords();
+      this.localKeywords = (await this.LSM.getKeywords())!;
 
       for (const keyword of keywords) {
-        const id = keyword.dataset.keyword;
-        const k = this.localKeywords[id];
+        const id = (keyword as HTMLElement).dataset.keyword!;
+        const k = this.localKeywords[id]!;
         this.descriptionKeywords[id] = { ...k, keywordElement: keyword };
       }
     } catch (e) {
@@ -110,10 +133,10 @@ class UIEditor {
       await this.saveKeywords();
 
       if (this.isRussianSaved) {
-        const currTitle = document.querySelector(".text-title-large");
+        const currTitle = document.querySelector(".text-title-large") as HTMLElement;
         const currDescription = document.querySelector(
           '[data-track-load="description_content"]'
-        );
+        ) as HTMLElement;
         currTitle.textContent = this.rusTitle;
         currDescription.innerHTML = this.rusDescription.innerHTML;
         this.createListenersForKeywords(currDescription);
@@ -121,7 +144,7 @@ class UIEditor {
         this.changeTitle();
         this.changeDescription();
       }
-  
+
       this.isRussian = true;
     } catch (e) {
       console.error(e);
@@ -129,19 +152,19 @@ class UIEditor {
   }
 
   setEng() {
-    const currTitle = document.querySelector(".text-title-large");
+    const currTitle = document.querySelector(".text-title-large") as HTMLElement;
     const currDescription = document.querySelector(
       '[data-track-load="description_content"]'
-    );
+    ) as HTMLElement;
     currTitle.textContent = this.engTitle.textContent;
-    this.rusDescription = this.rusDescription.cloneNode(true);
+    this.rusDescription = this.rusDescription.cloneNode(true) as HTMLElement;
     currDescription.innerHTML = this.engDescription.innerHTML;
     this.isRussian = false;
   }
 
   changeTitle() {
-    const title = this.engTitle.cloneNode(true);
-    const oldText = title.textContent;
+    const title = this.engTitle.cloneNode(true) as HTMLElement;
+    const oldText = this.engTitle.textContent!;
     this.engTitle.textContent = oldText.split(" ")[0] + " " + this.rusTitle;
     this.rusTitle = this.engTitle.textContent;
     this.engTitle = title;
@@ -151,9 +174,9 @@ class UIEditor {
     const nonBlockTags = new Set(["STRONG", "EM", "B", "I", "U"]);
     const currKeywords = this.engDescription.querySelectorAll("[data-keyword]");
     for (const currK of currKeywords) {
-      let textEl = currK;
-      while (!(textEl instanceof Text) && !nonBlockTags.has(textEl.tagName)) {
-        textEl = textEl.childNodes[0];
+      let textEl: Node = currK;
+      while (!(textEl instanceof Text) && !nonBlockTags.has((textEl as Element).tagName)) {
+        textEl = textEl.childNodes[0]!;
       }
       currK.replaceWith(textEl);
     }
@@ -161,22 +184,22 @@ class UIEditor {
     for (const descriptionImage of this.descriptionImages) {
       const { img, imgPath } = descriptionImage;
 
-      let parent = this.rusDescription;
+      let parent: Element = this.rusDescription;
       for (let i = 0; i < imgPath.length - 1; i++) {
-        parent = parent.children[imgPath[i]];
+        parent = parent.children[imgPath[i]!]!;
       }
 
-      const idx = imgPath.at(-1);
+      const idx = imgPath.at(-1)!;
       if (parent !== this.rusDescription) {
         const textNodesCnt = Array.from(parent.childNodes)
           .reduce((a, e) => a += e instanceof Text ? 1 : 0, 0);
-        parent.insertBefore(img, parent.childNodes[idx + textNodesCnt - 1]);
+        parent.insertBefore(img, parent.childNodes[idx + textNodesCnt - 1] ?? null);
       } else {
-        parent.insertBefore(img, parent.children[idx]);
+        parent.insertBefore(img, parent.children[idx] ?? null);
       }
     }
 
-    const description = this.engDescription.cloneNode(true);
+    const description = this.engDescription.cloneNode(true) as HTMLElement;
     this.engDescription.innerHTML = this.rusDescription.innerHTML;
     this.rusDescription = this.engDescription;
     this.createListenersForKeywords(this.rusDescription);
@@ -185,8 +208,8 @@ class UIEditor {
     this.isRussianSaved = true;
   }
 
-  createTooltipElement(rusName, description) {
-    const relative = document.querySelector("#__next");
+  createTooltipElement(rusName: string, description: string) {
+    const relative = document.querySelector("#__next")!;
     const tooltip = document.createElement("div");
     tooltip.classList.add("tooltip-container");
 
@@ -197,7 +220,7 @@ class UIEditor {
     const tooltipDescription = document.createElement("div");
     tooltipDescription.classList.add("tooltip-description");
     tooltipDescription.innerHTML = description;
-    
+
     tooltip.append(tooltipTitle, tooltipDescription);
 
     relative.insertAdjacentElement("beforeend", tooltip);
@@ -205,16 +228,16 @@ class UIEditor {
     return tooltip;
   }
 
-  createListenersForKeywords(descriptionContainer) {
+  createListenersForKeywords(descriptionContainer: HTMLElement) {
     const keywords = descriptionContainer.querySelectorAll("[data-keyword]");
 
     for (const keywordElement of keywords) {
-      const id = keywordElement.dataset.keyword;
-      const k = this.localKeywords[id];
+      const id = (keywordElement as HTMLElement).dataset.keyword!;
+      const k = this.localKeywords[id]!;
       const { rusName, description } = k;
       const tooltipElement = this.createTooltipElement(rusName, description);
 
-      let timer;
+      let timer: ReturnType<typeof setTimeout>;
       keywordElement.addEventListener("pointerenter", () => {
         timer = setTimeout(() => {
           this.keywordListener(keywordElement, tooltipElement);
@@ -230,7 +253,7 @@ class UIEditor {
     }
   }
 
-  keywordListener(keywordElement, tooltipElement) {
+  keywordListener(keywordElement: Element, tooltipElement: HTMLElement) {
     const keywordRect = keywordElement.getBoundingClientRect();
     const tooltipRect = tooltipElement.getBoundingClientRect();
 
