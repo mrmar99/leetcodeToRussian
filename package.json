@@ -25,5 +25,8 @@
     "typescript": "5.9.3",
     "typescript-eslint": "8.65.0",
     "wxt": "0.21.3"
+  },
+  "dependencies": {
+    "dompurify": "3.4.12"
   }
 }

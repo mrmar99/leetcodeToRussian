@@ -1,14 +1,14 @@
 import { Fetcher } from "./Fetcher";
 import { LocalStorageManager } from "./LocalStorageManager";
+import { Tooltip } from "./Tooltip";
+import { sanitize } from "./sanitize";
 import * as S from "./selectors";
-import type { KeywordEntry, KeywordsMap } from "./types";
+import type { KeywordsMap } from "./types";
 
 interface SavedImage {
   img: HTMLImageElement;
   imgPath: number[];
 }
-
-type DescriptionKeywords = Record<string, KeywordEntry & { keywordElement: Element }>;
 
 export class UIEditor {
   LSM: LocalStorageManager;
@@ -19,8 +19,9 @@ export class UIEditor {
   engTitle!: HTMLElement;
   engDescription!: HTMLElement;
   descriptionImages!: SavedImage[];
-  descriptionKeywords!: DescriptionKeywords;
-  localKeywords!: KeywordsMap;
+  localKeywords: KeywordsMap = {};
+  /** Контейнер описания, на который уже повешены обработчики тултипов. */
+  tooltipHost: HTMLElement | null = null;
   /** Узел описания, на который встал перевод. React подменяет его при перерисовке. */
   mountedDescription: Element | null = null;
   toggler: HTMLElement | null = null;
@@ -65,7 +66,7 @@ export class UIEditor {
 
     this.rusTitle = rusTitle;
     this.rusDescription = document.createElement("div");
-    this.rusDescription.innerHTML = rusDescription.replace(/ /g, " ");
+    this.rusDescription.innerHTML = sanitize(rusDescription);
 
     this.engTitle = document.querySelector(S.TITLE) as HTMLElement;
     this.engDescription = document.querySelector(S.DESCRIPTION) as HTMLElement;
@@ -160,20 +161,9 @@ export class UIEditor {
     }
   }
 
-  async saveKeywords() {
+  async loadKeywords() {
     try {
-      this.descriptionKeywords = {};
-
-      const keywords = this.rusDescription.querySelectorAll("[data-keyword]");
-
-      this.localKeywords = (await this.LSM.getKeywords())!;
-
-      for (const keyword of keywords) {
-        const id = (keyword as HTMLElement).dataset.keyword!;
-        const k = this.localKeywords[id]!;
-
-        this.descriptionKeywords[id] = { ...k, keywordElement: keyword };
-      }
+      this.localKeywords = (await this.LSM.getKeywords()) ?? {};
     } catch (e) {
       console.error(e);
     }
@@ -181,7 +171,7 @@ export class UIEditor {
 
   async setRus() {
     try {
-      await this.saveKeywords();
+      await this.loadKeywords();
 
       if (this.isRussianSaved) {
         const currTitle = document.querySelector(S.TITLE) as HTMLElement;
@@ -189,7 +179,7 @@ export class UIEditor {
 
         currTitle.textContent = this.rusTitle;
         currDescription.innerHTML = this.rusDescription.innerHTML;
-        this.createListenersForKeywords(currDescription);
+        this.attachKeywordTooltips(currDescription);
       } else {
         this.changeTitle();
         this.changeDescription();
@@ -259,77 +249,54 @@ export class UIEditor {
 
     this.engDescription.innerHTML = this.rusDescription.innerHTML;
     this.rusDescription = this.engDescription;
-    this.createListenersForKeywords(this.rusDescription);
+    this.attachKeywordTooltips(this.rusDescription);
     this.engDescription = description;
 
     this.isRussianSaved = true;
   }
 
-  createTooltipElement(rusName: string, description: string) {
-    const relative = document.querySelector(S.APP_ROOT)!;
-    const tooltip = document.createElement("div");
+  /**
+   * Вешает на контейнер описания одну пару делегированных обработчиков вместо двух
+   * на каждый термин. Контейнер переживает смену языка, поэтому подписка нужна один раз.
+   */
+  attachKeywordTooltips(descriptionContainer: HTMLElement) {
+    if (this.tooltipHost === descriptionContainer) return;
 
-    tooltip.classList.add(S.TOOLTIP_CLASS);
+    this.tooltipHost = descriptionContainer;
 
-    const tooltipTitle = document.createElement("div");
+    descriptionContainer.addEventListener("pointerover", (event) => {
+      const keyword = keywordUnderPointer(event);
 
-    tooltipTitle.classList.add("tooltip-title");
-    tooltipTitle.textContent = rusName;
+      if (!keyword) return;
 
-    const tooltipDescription = document.createElement("div");
+      const k = this.localKeywords[keyword.dataset.keyword!];
 
-    tooltipDescription.classList.add("tooltip-description");
-    tooltipDescription.innerHTML = description;
+      if (!k) return;
 
-    tooltip.append(tooltipTitle, tooltipDescription);
+      Tooltip.get().showAfterDelay(keyword, k.rusName, k.description);
+    });
 
-    relative.insertAdjacentElement("beforeend", tooltip);
+    descriptionContainer.addEventListener("pointerout", (event) => {
+      if (!keywordUnderPointer(event)) return;
 
-    return tooltip;
+      Tooltip.get().hideAfterDelay();
+    });
   }
+}
 
-  createListenersForKeywords(descriptionContainer: HTMLElement) {
-    const keywords = descriptionContainer.querySelectorAll("[data-keyword]");
+/**
+ * Термин, в который курсор вошёл или из которого вышел. Перемещения внутри одного
+ * термина отсекаются: `pointerover`/`pointerout` всплывают и от вложенных узлов.
+ */
+function keywordUnderPointer(event: PointerEvent): HTMLElement | null {
+  const target = event.target as Element | null;
+  const keyword = target?.closest<HTMLElement>("[data-keyword]");
 
-    for (const keywordElement of keywords) {
-      const id = (keywordElement as HTMLElement).dataset.keyword!;
-      const k = this.localKeywords[id]!;
-      const { rusName, description } = k;
-      const tooltipElement = this.createTooltipElement(rusName, description);
+  if (!keyword) return null;
 
-      let timer: ReturnType<typeof setTimeout>;
+  const related = event.relatedTarget as Node | null;
 
-      keywordElement.addEventListener("pointerenter", () => {
-        timer = setTimeout(() => {
-          this.keywordListener(keywordElement, tooltipElement);
-        }, 500);
-      });
-      keywordElement.addEventListener("pointerleave", () => {
-        clearTimeout(timer);
-        setTimeout(() => {
-          tooltipElement.style.opacity = "0";
-          tooltipElement.style.visibility = "hidden";
-        }, 500);
-      });
-    }
-  }
+  if (related && keyword.contains(related)) return null;
 
-  keywordListener(keywordElement: Element, tooltipElement: HTMLElement) {
-    const keywordRect = keywordElement.getBoundingClientRect();
-    const tooltipRect = tooltipElement.getBoundingClientRect();
-
-    const center = keywordRect.left + keywordRect.width / 2;
-
-    let tooltipX = center - tooltipRect.width / 2;
-    let tooltipY = keywordRect.top - tooltipRect.height - 10;
-
-    if (tooltipX < 11) tooltipX = 11;
-
-    if (tooltipY < 0) tooltipY = keywordRect.bottom + 10;
-
-    tooltipElement.style.left = `${tooltipX}px`;
-    tooltipElement.style.top = `${tooltipY}px`;
-    tooltipElement.style.opacity = "1";
-    tooltipElement.style.visibility = "visible";
-  }
+  return keyword;
 }
