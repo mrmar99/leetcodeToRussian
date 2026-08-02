@@ -2,29 +2,31 @@ import { Fetcher } from "@/api/Fetcher";
 import { LocalStorageManager } from "@/storage/LocalStorageManager";
 import type { KeywordsMap } from "@/storage/types";
 import { Tooltip } from "./Tooltip";
+import { collectImages, insertImages } from "./images";
 import { sanitize } from "./sanitize";
 import * as S from "./selectors";
 
-interface SavedImage {
-  img: HTMLImageElement;
-  imgPath: number[];
+export type Lang = "en" | "ru";
+
+/** Заголовок и описание задачи на одном языке. */
+interface Snapshot {
+  title: string;
+  html: string;
 }
 
 export class UIEditor {
   LSM: LocalStorageManager;
-  isRussianSaved = false;
-  isRussian = false;
-  rusTitle!: string;
-  rusDescription!: HTMLElement;
-  engTitle!: HTMLElement;
-  engDescription!: HTMLElement;
-  descriptionImages!: SavedImage[];
+  lang: Lang = "en";
   localKeywords: KeywordsMap = {};
   /** Контейнер описания, на который уже повешены обработчики тултипов. */
   tooltipHost: HTMLElement | null = null;
   /** Узел описания, на который встал перевод. React подменяет его при перерисовке. */
   mountedDescription: Element | null = null;
   toggler: HTMLElement | null = null;
+
+  private titleEl!: HTMLElement;
+  private descriptionEl!: HTMLElement;
+  private snapshots!: Record<Lang, Snapshot>;
 
   constructor() {
     this.LSM = new LocalStorageManager(new Fetcher());
@@ -57,22 +59,39 @@ export class UIEditor {
     );
   }
 
-  initProblemPage(rusTitle: string, rusDescription: string) {
-    if (arguments.length < 2)
-      throw new Error("Необходимо передать все аргументы");
+  /**
+   * Снимает с текущей страницы английский вариант и готовит русский. Оба остаются
+   * неизменяемыми строками, так что переключение языка — это переустановка одной из них.
+   */
+  async initProblemPage(rusTitle: string, rusHtml: string) {
+    this.titleEl = document.querySelector(S.TITLE) as HTMLElement;
+    this.descriptionEl = document.querySelector(S.DESCRIPTION) as HTMLElement;
+    this.mountedDescription = this.descriptionEl;
 
-    this.isRussianSaved = false;
-    this.isRussian = false;
+    const engTitle = this.titleEl.textContent ?? "";
+    const rusDescription = document.createElement("div");
 
-    this.rusTitle = rusTitle;
-    this.rusDescription = document.createElement("div");
-    this.rusDescription.innerHTML = sanitize(rusDescription);
+    rusDescription.innerHTML = sanitize(rusHtml);
+    insertImages(rusDescription, collectImages(this.descriptionEl));
 
-    this.engTitle = document.querySelector(S.TITLE) as HTMLElement;
-    this.engDescription = document.querySelector(S.DESCRIPTION) as HTMLElement;
-    this.mountedDescription = this.engDescription;
+    this.snapshots = {
+      en: { title: engTitle, html: this.descriptionEl.innerHTML },
+      // Номер задачи есть только в английском заголовке, в переводе его нет.
+      ru: { title: `${engTitle.split(" ")[0]} ${rusTitle}`, html: rusDescription.innerHTML },
+    };
 
-    this.saveImages();
+    await this.loadKeywords();
+  }
+
+  /** Ставит на страницу нужный язык. Вызывать можно сколько угодно раз. */
+  render(lang: Lang) {
+    const snapshot = this.snapshots[lang];
+
+    this.titleEl.textContent = snapshot.title;
+    this.descriptionEl.innerHTML = snapshot.html;
+    this.lang = lang;
+
+    if (lang === "ru") this.attachKeywordTooltips(this.descriptionEl);
   }
 
   initProblemsetPage(topicBtnsEl: Element) {
@@ -90,7 +109,7 @@ export class UIEditor {
     topicBtnsEl.insertAdjacentElement("afterbegin", a);
   }
 
-  async setToggler() {
+  setToggler() {
     const bar = (
       document.querySelector(S.DESCRIPTION)!.parentNode!.parentNode as Element
     ).previousElementSibling!;
@@ -102,66 +121,23 @@ export class UIEditor {
 
     toggler.className = `${S.TOGGLER_CLASS} relative inline-flex items-center justify-center text-caption px-2 py-1 gap-1 rounded-full`;
     toggler.textContent = "EN | RU";
-    this.setTogglerState(toggler);
+    this.paintToggler(toggler);
     bar.append(toggler);
 
-    toggler.addEventListener("click", async () => {
-      if (this.isRussian) {
-        this.setEng();
-      } else {
-        await this.setRus();
-      }
-
-      this.setTogglerState(toggler);
+    toggler.addEventListener("click", () => {
+      this.render(this.lang === "ru" ? "en" : "ru");
+      this.paintToggler(toggler);
     });
 
     this.toggler = toggler;
   }
 
-  setTogglerState(toggler: HTMLElement) {
-    toggler.classList.toggle(`${S.TOGGLER_CLASS}__active-RU`, this.isRussian);
-    toggler.classList.toggle(`${S.TOGGLER_CLASS}__active-EN`, !this.isRussian);
+  private paintToggler(toggler: HTMLElement) {
+    toggler.classList.toggle(`${S.TOGGLER_CLASS}__active-RU`, this.lang === "ru");
+    toggler.classList.toggle(`${S.TOGGLER_CLASS}__active-EN`, this.lang !== "ru");
   }
 
-  saveImages() {
-    this.descriptionImages = [];
-
-    const imgs = this.engDescription.querySelectorAll("img");
-
-    for (const img of imgs) {
-      const imgPath: number[] = [];
-
-      let tmpParent = img.parentNode as Element, tmpChild: Element = img, oneChildCnt = 0;
-
-      while (tmpParent !== this.engDescription) {
-        const tmpChildren = tmpParent.children;
-
-        if (tmpChildren.length === 1) {
-          imgPath.push(0);
-          oneChildCnt++;
-        } else {
-          const index = Array.from(tmpChildren).indexOf(tmpChild);
-
-          imgPath.push(index);
-        }
-
-        tmpChild = tmpParent;
-        tmpParent = tmpParent.parentNode as Element;
-      }
-
-      if (oneChildCnt === imgPath.length) {
-        imgPath.length = 0;
-      }
-
-      const index = Array.from(tmpParent.children).indexOf(tmpChild);
-
-      imgPath.push(index);
-
-      this.descriptionImages.push({ img: img.cloneNode(true) as HTMLImageElement, imgPath: imgPath.reverse() });
-    }
-  }
-
-  async loadKeywords() {
+  private async loadKeywords() {
     try {
       this.localKeywords = (await this.LSM.getKeywords()) ?? {};
     } catch (e) {
@@ -169,97 +145,11 @@ export class UIEditor {
     }
   }
 
-  async setRus() {
-    try {
-      await this.loadKeywords();
-
-      if (this.isRussianSaved) {
-        const currTitle = document.querySelector(S.TITLE) as HTMLElement;
-        const currDescription = document.querySelector(S.DESCRIPTION) as HTMLElement;
-
-        currTitle.textContent = this.rusTitle;
-        currDescription.innerHTML = this.rusDescription.innerHTML;
-        this.attachKeywordTooltips(currDescription);
-      } else {
-        this.changeTitle();
-        this.changeDescription();
-      }
-
-      this.isRussian = true;
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
-  setEng() {
-    const currTitle = document.querySelector(S.TITLE) as HTMLElement;
-    const currDescription = document.querySelector(S.DESCRIPTION) as HTMLElement;
-
-    currTitle.textContent = this.engTitle.textContent;
-    this.rusDescription = this.rusDescription.cloneNode(true) as HTMLElement;
-    currDescription.innerHTML = this.engDescription.innerHTML;
-    this.isRussian = false;
-  }
-
-  changeTitle() {
-    const title = this.engTitle.cloneNode(true) as HTMLElement;
-    const oldText = this.engTitle.textContent!;
-
-    this.engTitle.textContent = oldText.split(" ")[0] + " " + this.rusTitle;
-    this.rusTitle = this.engTitle.textContent;
-    this.engTitle = title;
-  }
-
-  changeDescription() {
-    const nonBlockTags = new Set(["STRONG", "EM", "B", "I", "U"]);
-    const currKeywords = this.engDescription.querySelectorAll("[data-keyword]");
-
-    for (const currK of currKeywords) {
-      let textEl: Node = currK;
-
-      while (!(textEl instanceof Text) && !nonBlockTags.has((textEl as Element).tagName)) {
-        textEl = textEl.childNodes[0]!;
-      }
-
-      currK.replaceWith(textEl);
-    }
-
-    for (const descriptionImage of this.descriptionImages) {
-      const { img, imgPath } = descriptionImage;
-
-      let parent: Element = this.rusDescription;
-
-      for (let i = 0; i < imgPath.length - 1; i++) {
-        parent = parent.children[imgPath[i]!]!;
-      }
-
-      const idx = imgPath.at(-1)!;
-
-      if (parent !== this.rusDescription) {
-        const textNodesCnt = Array.from(parent.childNodes)
-          .reduce((a, e) => a + (e instanceof Text ? 1 : 0), 0);
-
-        parent.insertBefore(img, parent.childNodes[idx + textNodesCnt - 1] ?? null);
-      } else {
-        parent.insertBefore(img, parent.children[idx] ?? null);
-      }
-    }
-
-    const description = this.engDescription.cloneNode(true) as HTMLElement;
-
-    this.engDescription.innerHTML = this.rusDescription.innerHTML;
-    this.rusDescription = this.engDescription;
-    this.attachKeywordTooltips(this.rusDescription);
-    this.engDescription = description;
-
-    this.isRussianSaved = true;
-  }
-
   /**
    * Вешает на контейнер описания одну пару делегированных обработчиков вместо двух
    * на каждый термин. Контейнер переживает смену языка, поэтому подписка нужна один раз.
    */
-  attachKeywordTooltips(descriptionContainer: HTMLElement) {
+  private attachKeywordTooltips(descriptionContainer: HTMLElement) {
     if (this.tooltipHost === descriptionContainer) return;
 
     this.tooltipHost = descriptionContainer;

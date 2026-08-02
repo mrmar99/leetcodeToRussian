@@ -6,7 +6,7 @@ import { LocalStorageManager } from "@/storage/LocalStorageManager";
 import { observeDom } from "@/dom/observeDom";
 import { onLocationChange } from "@/dom/watchLocation";
 import { waitFor } from "@/dom/waitFor";
-import { UIEditor } from "@/ui/UIEditor";
+import { UIEditor, type Lang } from "@/ui/UIEditor";
 import { authOrOldAlert, networkErrorAlert, problemNotFoundAlert } from "@/ui/alerts";
 import * as S from "@/ui/selectors";
 import "@/assets/style.css";
@@ -179,19 +179,17 @@ async function problemPage(isCurrent: () => boolean, signal: AbortSignal) {
 async function keepProblemMounted(t: Translation, signal: AbortSignal) {
   const rusDescription = t.description.replace(/\\n/g, "\n");
 
-  const render = async (inRussian: boolean) => {
+  const render = async (lang: Lang) => {
     const editor = new UIEditor();
 
-    editor.initProblemPage(t.rusTitle, rusDescription);
-
-    if (inRussian) await editor.setRus();
-
-    await editor.setToggler();
+    await editor.initProblemPage(t.rusTitle, rusDescription);
+    editor.render(lang);
+    editor.setToggler();
 
     return editor;
   };
 
-  let ui = await render(true);
+  let ui = await render("ru");
   let busy = false;
   let failures = 0;
 
@@ -215,17 +213,21 @@ async function keepProblemMounted(t: Translation, signal: AbortSignal) {
 
     if (live === ui.mountedDescription) {
       // Описание на месте, пропал только тумблер: текст перерисовывать не нужно.
-      ui.setToggler().catch((e) => console.error(e));
+      try {
+        ui.setToggler();
+      } catch (e) {
+        console.error(e);
+      }
 
       return;
     }
 
     busy = true;
 
-    const inRussian = ui.isRussian;
+    const lang = ui.lang;
 
     UIEditor.removeInjectedUI();
-    render(inRussian)
+    render(lang)
       .then((next) => { ui = next; })
       .catch((e) => console.error(e))
       .finally(() => { busy = false; });
