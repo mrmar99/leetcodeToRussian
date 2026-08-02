@@ -1,8 +1,7 @@
-import { Fetcher } from "@/api/Fetcher";
-import { LocalStorageManager } from "@/storage/LocalStorageManager";
+import type { Layout } from "@/dom/layout";
 import type { KeywordsMap } from "@/storage/types";
 import { Tooltip } from "./Tooltip";
-import { collectImages, insertImages } from "./images";
+import { fillImagePlaceholders } from "./images";
 import { sanitize } from "./sanitize";
 import * as S from "./selectors";
 
@@ -15,9 +14,8 @@ interface Snapshot {
 }
 
 export class UIEditor {
-  LSM: LocalStorageManager;
   lang: Lang = "en";
-  localKeywords: KeywordsMap = {};
+  localKeywords: KeywordsMap;
   /** Контейнер описания, на который уже повешены обработчики тултипов. */
   tooltipHost: HTMLElement | null = null;
   /** Узел описания, на который встал перевод. React подменяет его при перерисовке. */
@@ -28,8 +26,8 @@ export class UIEditor {
   private descriptionEl!: HTMLElement;
   private snapshots!: Record<Lang, Snapshot>;
 
-  constructor() {
-    this.LSM = new LocalStorageManager(new Fetcher());
+  constructor(private layout: Layout, keywords: KeywordsMap) {
+    this.localKeywords = keywords;
   }
 
   /**
@@ -38,7 +36,7 @@ export class UIEditor {
    */
   static removeInjectedUI() {
     const injected = document.querySelectorAll(
-      `.${S.TOGGLER_CLASS}, .${S.TOOLTIP_CLASS}, .${S.TRANSLATIONS_BTN_CLASS}`
+      `.${S.TOGGLER_CLASS}, .${S.TOOLTIP_CLASS}, .${S.TRANSLATIONS_BTN_CLASS}, .${S.SUGGEST_BTN_CLASS}`
     );
 
     for (const el of injected) {
@@ -53,7 +51,7 @@ export class UIEditor {
   isMounted(): boolean {
     return (
       this.mountedDescription !== null &&
-      this.mountedDescription === document.querySelector(S.DESCRIPTION) &&
+      this.mountedDescription === this.layout.find("description") &&
       this.toggler !== null &&
       this.toggler.isConnected
     );
@@ -63,24 +61,22 @@ export class UIEditor {
    * Снимает с текущей страницы английский вариант и готовит русский. Оба остаются
    * неизменяемыми строками, так что переключение языка — это переустановка одной из них.
    */
-  async initProblemPage(rusTitle: string, rusHtml: string) {
-    this.titleEl = document.querySelector(S.TITLE) as HTMLElement;
-    this.descriptionEl = document.querySelector(S.DESCRIPTION) as HTMLElement;
+  initProblemPage(rusTitle: string, rusHtml: string) {
+    this.titleEl = this.layout.find("title") as HTMLElement;
+    this.descriptionEl = this.layout.find("description") as HTMLElement;
     this.mountedDescription = this.descriptionEl;
 
     const engTitle = this.titleEl.textContent ?? "";
     const rusDescription = document.createElement("div");
 
     rusDescription.innerHTML = sanitize(rusHtml);
-    insertImages(rusDescription, collectImages(this.descriptionEl));
+    fillImagePlaceholders(rusDescription, this.descriptionEl);
 
     this.snapshots = {
       en: { title: engTitle, html: this.descriptionEl.innerHTML },
       // Номер задачи есть только в английском заголовке, в переводе его нет.
       ru: { title: `${engTitle.split(" ")[0]} ${rusTitle}`, html: rusDescription.innerHTML },
     };
-
-    await this.loadKeywords();
   }
 
   /** Ставит на страницу нужный язык. Вызывать можно сколько угодно раз. */
@@ -110,9 +106,9 @@ export class UIEditor {
   }
 
   setToggler() {
-    const bar = (
-      document.querySelector(S.DESCRIPTION)!.parentNode!.parentNode as Element
-    ).previousElementSibling!;
+    const bar = this.layout.find("togglerBar");
+
+    if (!bar) throw new Error("Панель для тумблера не найдена");
 
     // При перемонтировании старый тумблер удаляется, чтобы не появился второй.
     bar.querySelector(`.${S.TOGGLER_CLASS}`)?.remove();
@@ -135,14 +131,6 @@ export class UIEditor {
   private paintToggler(toggler: HTMLElement) {
     toggler.classList.toggle(`${S.TOGGLER_CLASS}__active-RU`, this.lang === "ru");
     toggler.classList.toggle(`${S.TOGGLER_CLASS}__active-EN`, this.lang !== "ru");
-  }
-
-  private async loadKeywords() {
-    try {
-      this.localKeywords = (await this.LSM.getKeywords()) ?? {};
-    } catch (e) {
-      console.error(e);
-    }
   }
 
   /**
@@ -180,7 +168,7 @@ export class UIEditor {
  */
 function keywordUnderPointer(event: PointerEvent): HTMLElement | null {
   const target = event.target as Element | null;
-  const keyword = target?.closest<HTMLElement>("[data-keyword]");
+  const keyword = target?.closest<HTMLElement>(S.KEYWORD);
 
   if (!keyword) return null;
 

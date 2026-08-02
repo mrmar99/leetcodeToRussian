@@ -1,6 +1,6 @@
 import { browser } from "wxt/browser";
 import type { Fetcher } from "@/api/Fetcher";
-import type { Translation } from "@/api/types";
+import type { LayoutConfig, Translation } from "@/api/types";
 import type { KeywordsMap, TranslationsMap } from "./types";
 
 export class LocalStorageManager {
@@ -9,6 +9,7 @@ export class LocalStorageManager {
   keywordsKey = "leetcodeToRussianKeywords";
   translationsVersionKey = "leetcodeToRussianTranslationsVersion";
   keywordsVersionKey = "leetcodeToRussianKeywordsVersion";
+  layoutKey = "leetcodeToRussianLayout";
   uuidKey = "leetcodeToRussianUuid";
 
   constructor(fetcher: Fetcher) {
@@ -31,8 +32,36 @@ export class LocalStorageManager {
     }
   }
 
-  /** Сбой отправки не должен мешать показу перевода: аналитика необязательна. */
-  async setAnonymousUserId(problemId: number): Promise<void> {
+  /**
+   * Обновляет кеши по версиям из `/api/bootstrap` и сохраняет конфиг разметки.
+   *
+   * При сбое остаётся прежний кеш — это лучше, чем отсутствие перевода, — поэтому
+   * наружу ошибка не выпускается.
+   */
+  async sync(): Promise<void> {
+    try {
+      const { versions, layout } = await this.fetcher.bootstrap();
+
+      await this.set(this.layoutKey, layout);
+      await this.updateKeywords(versions.keywords);
+      await this.updateTranslations(versions.translations);
+    } catch (e) {
+      console.warn("Синхронизация с API не удалась, используется кеш", e);
+    }
+  }
+
+  /** Конфиг разметки с прошлой синхронизации. `undefined` — использовать бандленный. */
+  async getLayout(): Promise<LayoutConfig | undefined> {
+    return this.get<LayoutConfig>(this.layoutKey);
+  }
+
+  /**
+   * Отмечает визит и отдаёт идентификатор пользователя, если визит дошёл до сервера.
+   *
+   * `null` означает сбой: аналитика необязательна и показу перевода не мешает, но
+   * предлагать перевод в этом случае нельзя — сервер не знает такого пользователя.
+   */
+  async reportVisit(problemId: number): Promise<string | null> {
     try {
       let uuid = await this.get<string>(this.uuidKey);
 
@@ -41,54 +70,46 @@ export class LocalStorageManager {
         await this.set(this.uuidKey, uuid);
       }
 
-      await this.fetcher.anonymousUser(uuid, problemId);
+      await this.fetcher.visit(uuid, problemId);
+
+      return uuid;
     } catch (e) {
       console.warn("Не удалось отправить анонимный идентификатор", e);
+
+      return null;
     }
   }
 
-  /** При сбое обновления остаётся прежний кеш — это лучше, чем отсутствие перевода. */
-  async initOrUpdateKeywords(): Promise<void> {
-    try {
-      const versionAPI = await this.fetcher.version("keywords");
-      const versionLocal = await this.getKeywordsVersion();
+  private async updateKeywords(versionAPI: number): Promise<void> {
+    const versionLocal = await this.getKeywordsVersion();
 
-      if (!versionLocal || versionLocal < versionAPI) {
-        await this.setKeywords();
-        await this.setKeywordsVersion(versionAPI);
-      }
-    } catch (e) {
-      console.warn("Термины не обновлены, используется кеш", e);
-    }
+    if (versionLocal && versionLocal >= versionAPI) return;
+
+    await this.setKeywords();
+    await this.setKeywordsVersion(versionAPI);
   }
 
-  /** При сбое обновления остаётся прежний кеш — это лучше, чем отсутствие перевода. */
-  async initOrUpdateTranslations(): Promise<void> {
-    try {
-      let translations = await this.getTranslations();
+  private async updateTranslations(versionAPI: number): Promise<void> {
+    let translations = await this.getTranslations();
 
-      if (!translations) {
-        translations = {};
-        await this.set(this.translationsKey, translations);
-      }
-
-      const versionAPI = await this.fetcher.version("translations");
-      const versionLocal = await this.getTranslationsVersion();
-
-      if (!versionLocal || versionLocal < versionAPI) {
-        const tIds = Object.keys(translations);
-
-        if (tIds.length) {
-          const fetchedTranslations = await this.fetcher.translations(tIds);
-
-          await this.setTranslations(fetchedTranslations, translations);
-        }
-
-        await this.setTranslationsVersion(versionAPI);
-      }
-    } catch (e) {
-      console.warn("Переводы не обновлены, используется кеш", e);
+    if (!translations) {
+      translations = {};
+      await this.set(this.translationsKey, translations);
     }
+
+    const versionLocal = await this.getTranslationsVersion();
+
+    if (versionLocal && versionLocal >= versionAPI) return;
+
+    const tIds = Object.keys(translations);
+
+    if (tIds.length) {
+      const fetchedTranslations = await this.fetcher.translations(tIds);
+
+      await this.setTranslations(fetchedTranslations, translations);
+    }
+
+    await this.setTranslationsVersion(versionAPI);
   }
 
   async setTranslations(
@@ -104,7 +125,6 @@ export class LocalStorageManager {
 
       translations = { ...translations, ...translationsToSave };
       await this.set(this.translationsKey, translations);
-      console.log(`Переводы обновлены и сохранены в локальное хранилище`);
 
       return translations;
     } catch (e) {
@@ -121,22 +141,16 @@ export class LocalStorageManager {
   }
 
   async setKeywords(): Promise<void> {
-    try {
-      const keywords = await this.fetcher.keywords();
+    const keywords = await this.fetcher.keywords();
+    const keywordsToSave: KeywordsMap = {};
 
-      const keywordsToSave: KeywordsMap = {};
+    for (const k of keywords) {
+      const { id, rusName, description } = k;
 
-      for (const k of keywords) {
-        const { id, rusName, description } = k;
-
-        keywordsToSave[id] = { rusName, description };
-      }
-
-      await this.set(this.keywordsKey, keywordsToSave);
-      console.log("Термины обновлены и сохранены в локальное хранилище");
-    } catch (e) {
-      console.error(e);
+      keywordsToSave[id] = { rusName, description };
     }
+
+    await this.set(this.keywordsKey, keywordsToSave);
   }
 
   async getKeywords(): Promise<KeywordsMap | undefined> {
@@ -147,35 +161,19 @@ export class LocalStorageManager {
     }
   }
 
-  async setTranslationsVersion(version: number | undefined): Promise<void> {
-    try {
-      await this.set(this.translationsVersionKey, version);
-    } catch (e) {
-      console.error(e);
-    }
+  async setTranslationsVersion(version: number): Promise<void> {
+    await this.set(this.translationsVersionKey, version);
   }
 
   async getTranslationsVersion(): Promise<number | undefined> {
-    try {
-      return await this.get<number>(this.translationsVersionKey);
-    } catch (e) {
-      console.error(e);
-    }
+    return this.get<number>(this.translationsVersionKey);
   }
 
-  async setKeywordsVersion(version: number | undefined): Promise<void> {
-    try {
-      await this.set(this.keywordsVersionKey, version);
-    } catch (e) {
-      console.error(e);
-    }
+  async setKeywordsVersion(version: number): Promise<void> {
+    await this.set(this.keywordsVersionKey, version);
   }
 
   async getKeywordsVersion(): Promise<number | undefined> {
-    try {
-      return await this.get<number>(this.keywordsVersionKey);
-    } catch (e) {
-      console.error(e);
-    }
+    return this.get<number>(this.keywordsVersionKey);
   }
 }

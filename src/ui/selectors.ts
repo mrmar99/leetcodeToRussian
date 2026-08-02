@@ -1,10 +1,12 @@
-/** Селекторы разметки LeetCode. Первое место для правки, если LeetCode сменит вёрстку. */
-export const TITLE = ".text-title-large";
-export const DESCRIPTION = '[data-track-load="description_content"]';
-export const TOPIC_BTN = 'a[href="/problemset/all-code-essentials"]';
+/**
+ * Селекторы, не зависящие от вёрстки LeetCode. Всё, что за неё цепляется, живёт
+ * в конфиге разметки: `defaultLayout.ts` и `/api/bootstrap`.
+ */
 export const APP_ROOT = "#__next";
+export const KEYWORD = "[data-keyword]";
 
 /** Классы элементов, которые расширение добавляет на страницу. */
 export const TOGGLER_CLASS = "LTR-toggler";
 export const TOOLTIP_CLASS = "tooltip-container";
 export const TRANSLATIONS_BTN_CLASS = "LTR-custom-translations-btn";
+export const SUGGEST_BTN_CLASS = "LTR-suggest-btn";

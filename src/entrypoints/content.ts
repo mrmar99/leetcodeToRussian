@@ -3,11 +3,15 @@ import { Fetcher } from "@/api/Fetcher";
 import { ApiException } from "@/api/exceptions";
 import type { Translation } from "@/api/types";
 import { LocalStorageManager } from "@/storage/LocalStorageManager";
+import type { KeywordsMap } from "@/storage/types";
+import { Layout } from "@/dom/layout";
 import { observeDom } from "@/dom/observeDom";
 import { onLocationChange } from "@/dom/watchLocation";
 import { waitFor } from "@/dom/waitFor";
 import { UIEditor, type Lang } from "@/ui/UIEditor";
 import { authOrOldAlert, networkErrorAlert, problemNotFoundAlert } from "@/ui/alerts";
+import { DEFAULT_LAYOUT } from "@/ui/defaultLayout";
+import { keepSuggestButtonMounted, problemTitleFrom } from "@/ui/suggestButton";
 import * as S from "@/ui/selectors";
 import "@/assets/style.css";
 
@@ -46,9 +50,9 @@ function routeKey(route: Route): string | null {
  * Ищет заголовок и описание задачи, но только если они уже относятся к `slug`:
  * при клиентском переходе разметка предыдущей задачи какое-то время ещё висит в DOM.
  */
-function detectProblemPage(slug: string) {
-  const title = document.querySelector(S.TITLE);
-  const description = document.querySelector(S.DESCRIPTION);
+function detectProblemPage(slug: string, layout: Layout) {
+  const title = layout.find("title");
+  const description = layout.find("description");
 
   if (!title || !description) return null;
 
@@ -89,8 +93,16 @@ async function route() {
 
   if (!current) return;
 
+  const fetcher = new Fetcher();
+  const LSM = new LocalStorageManager(fetcher);
+  // Конфиг берётся из кеша, чтобы не ждать сеть перед первой отрисовкой.
+  // Свежий приезжает в sync() и применяется со следующей навигации.
+  const layout = new Layout((await LSM.getLayout()) ?? DEFAULT_LAYOUT);
+
+  if (!isCurrent()) return;
+
   if (current.kind === "problem") {
-    const found = await waitFor(() => detectProblemPage(current.slug), {
+    const found = await waitFor(() => detectProblemPage(current.slug, layout), {
       timeout: PAGE_TIMEOUT,
       signal: abort.signal,
     });
@@ -99,40 +111,46 @@ async function route() {
 
     if (!found) {
       authOrOldAlert();
+      reportLayout(fetcher, layout);
 
       return;
     }
 
-    await problemPage(isCurrent, abort.signal);
+    await problemPage(fetcher, LSM, layout, isCurrent, abort.signal);
   } else {
-    const topicBtn = await waitFor(() => document.querySelector(S.TOPIC_BTN), {
+    const topicBar = await waitFor(() => layout.find("problemsetTopicBar"), {
       timeout: PAGE_TIMEOUT,
       signal: abort.signal,
     });
 
     if (!isCurrent()) return;
 
-    if (!topicBtn) {
+    if (!topicBar) {
       authOrOldAlert();
-
-      return;
+    } else {
+      problemsetPage(layout, abort.signal);
     }
-
-    problemsetPage(abort.signal);
   }
+
+  reportLayout(fetcher, layout);
 }
 
-async function problemPage(isCurrent: () => boolean, signal: AbortSignal) {
+async function problemPage(
+  fetcher: Fetcher,
+  LSM: LocalStorageManager,
+  layout: Layout,
+  isCurrent: () => boolean,
+  signal: AbortSignal
+) {
   try {
-    const title = document.querySelector(S.TITLE)!;
-    const id = parseInt(title.textContent!);
+    const engTitle = layout.find("title")!.textContent ?? "";
+    const id = parseInt(engTitle);
 
-    const fetcher = new Fetcher();
-    const LSM = new LocalStorageManager(fetcher);
+    await LSM.sync();
 
-    await LSM.initOrUpdateKeywords();
-    await LSM.initOrUpdateTranslations();
-    await LSM.setAnonymousUserId(id);
+    // uuid возвращается только если визит дошёл — без него форма предложения
+    // не примет отправку, и предлагать перевод бессмысленно.
+    const uuid = await LSM.reportVisit(id);
 
     const translations = (await LSM.getTranslations()) ?? {};
     let t: Translation | null;
@@ -159,14 +177,24 @@ async function problemPage(isCurrent: () => boolean, signal: AbortSignal) {
     if (!t) {
       problemNotFoundAlert();
 
+      if (uuid) {
+        keepSuggestButtonMounted(
+          layout,
+          { problemId: id, title: problemTitleFrom(engTitle), uuid },
+          signal
+        );
+      }
+
       return;
     }
 
     await LSM.setTranslations([t], translations);
 
+    const keywords = (await LSM.getKeywords()) ?? {};
+
     if (!isCurrent()) return;
 
-    await keepProblemMounted(t, signal);
+    keepProblemMounted(t, keywords, layout, signal);
   } catch (e) {
     console.error(e);
   }
@@ -176,26 +204,28 @@ async function problemPage(isCurrent: () => boolean, signal: AbortSignal) {
  * Рисует перевод и следит, чтобы он не пропал: React пересоздаёт описание при
  * возврате с вкладки решений, унося с собой и текст перевода, и тумблер.
  */
-async function keepProblemMounted(t: Translation, signal: AbortSignal) {
+function keepProblemMounted(
+  t: Translation,
+  keywords: KeywordsMap,
+  layout: Layout,
+  signal: AbortSignal
+) {
   const rusDescription = t.description.replace(/\\n/g, "\n");
 
-  const render = async (lang: Lang) => {
-    const editor = new UIEditor();
+  const render = (lang: Lang) => {
+    const editor = new UIEditor(layout, keywords);
 
-    await editor.initProblemPage(t.rusTitle, rusDescription);
+    editor.initProblemPage(t.rusTitle, rusDescription);
     editor.render(lang);
     editor.setToggler();
 
     return editor;
   };
 
-  let ui = await render("ru");
-  let busy = false;
+  let ui = render("ru");
   let failures = 0;
 
   observeDom(() => {
-    if (busy) return;
-
     if (ui.isMounted()) {
       failures = 0;
 
@@ -204,49 +234,49 @@ async function keepProblemMounted(t: Translation, signal: AbortSignal) {
 
     if (failures >= MAX_MOUNT_FAILURES) return;
 
-    const live = document.querySelector(S.DESCRIPTION);
+    const live = layout.find("description");
 
     // Описания нет вовсе — открыта другая вкладка задачи.
     if (!live) return;
 
     failures++;
 
-    if (live === ui.mountedDescription) {
-      // Описание на месте, пропал только тумблер: текст перерисовывать не нужно.
-      try {
+    try {
+      if (live === ui.mountedDescription) {
+        // Описание на месте, пропал только тумблер: текст перерисовывать не нужно.
         ui.setToggler();
-      } catch (e) {
-        console.error(e);
+      } else {
+        const lang = ui.lang;
+
+        UIEditor.removeInjectedUI();
+        ui = render(lang);
       }
-
-      return;
+    } catch (e) {
+      console.error(e);
     }
-
-    busy = true;
-
-    const lang = ui.lang;
-
-    UIEditor.removeInjectedUI();
-    render(lang)
-      .then((next) => { ui = next; })
-      .catch((e) => console.error(e))
-      .finally(() => { busy = false; });
   }, { signal });
 }
 
-function problemsetPage(signal: AbortSignal) {
+function problemsetPage(layout: Layout, signal: AbortSignal) {
   const mount = () => {
     if (document.querySelector(`.${S.TRANSLATIONS_BTN_CLASS}`)) return;
 
-    const topicBtn = document.querySelector(S.TOPIC_BTN);
+    const topicBar = layout.find("problemsetTopicBar");
 
-    if (!topicBtn) return;
+    if (!topicBar) return;
 
-    new UIEditor().initProblemsetPage(topicBtn.parentNode as Element);
+    new UIEditor(layout, {}).initProblemsetPage(topicBar);
   };
 
   mount();
   observeDom(mount, { signal });
+}
+
+/** Сообщает, какие стратегии сработали: `-1` — сигнал о смене вёрстки LeetCode. */
+function reportLayout(fetcher: Fetcher, layout: Layout) {
+  fetcher
+    .layoutTelemetry(layout.version, layout.results())
+    .catch((e) => console.warn("Телеметрия разметки не отправлена", e));
 }
 
 export default defineContentScript({
