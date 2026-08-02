@@ -10,6 +10,7 @@ export class Fetcher {
     try {
       const res = await fetch(url);
       const resJson = await res.json();
+
       return resJson.data as T;
     } catch (e) {
       console.error(e);
@@ -28,6 +29,7 @@ export class Fetcher {
     try {
       const res = await fetch(this.translationsUrl + id);
       const resJson = await res.json();
+
       return resJson.data as Translation;
     } catch (e) {
       console.error(e);

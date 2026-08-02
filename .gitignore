@@ -4,3 +4,4 @@ node_modules
 .wxt
 stats.html
 *.zip
+settings.local.json

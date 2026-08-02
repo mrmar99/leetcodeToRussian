@@ -18,9 +18,12 @@ const dispatchLoadEvent = () => window.dispatchEvent(new Event("load"));
 
 const locationChangeEvent = (event: Event) => {
   const target = event.target as Window;
+
   currProblem = target.location.href.slice(baseUrl.length).split("/")[0]!;
+
   if (target.location.href.startsWith(baseUrl) && lastProblem.length && lastProblem !== currProblem) {
     const nextApp = document.querySelector("#__next");
+
     if (nextApp) nextApp.innerHTML = "";
     window.location.href = baseUrl + currProblem;
     dispatchLoadEvent();
@@ -36,6 +39,7 @@ async function problemPage() {
 
     const fetcher = new Fetcher();
     const LSM = new LocalStorageManager(fetcher);
+
     await LSM.initOrUpdateKeywords();
     await LSM.initOrUpdateTranslations();
     await LSM.setAnonymousUserId(id);
@@ -45,6 +49,7 @@ async function problemPage() {
 
     if (!t) {
       problemNotFoundAlert();
+
       return;
     }
 
@@ -53,6 +58,7 @@ async function problemPage() {
 
     const { rusTitle, description } = t;
     const ui = new UIEditor();
+
     ui.initProblemPage(rusTitle, description.replace(/\\n/g, "\n"));
     await ui.setRus();
     await ui.setToggler();
@@ -63,6 +69,7 @@ async function problemPage() {
 
 function problemsetPage(topicBtnsEl: Element) {
   const ui = new UIEditor();
+
   ui.initProblemsetPage(topicBtnsEl);
 }
 
@@ -85,7 +92,11 @@ export default defineContentScript({
       } else if (topicBtnEl) {
         problemsetPage(topicBtnEl.parentNode as Element);
       } else {
-        triesCnt <= MAX_TRIES ? setTimeout(dispatchLoadEvent, DELAY) : authOrOldAlert();
+        if (triesCnt <= MAX_TRIES) {
+          setTimeout(dispatchLoadEvent, DELAY);
+        } else {
+          authOrOldAlert();
+        }
       }
     });
 

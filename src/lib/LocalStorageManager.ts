@@ -32,10 +32,12 @@ export class LocalStorageManager {
 
   async setAnonymousUserId(problemId: number): Promise<void> {
     let uuid = await this.get<string>(this.uuidKey);
+
     if (!uuid) {
       uuid = window.crypto.randomUUID();
       await this.set(this.uuidKey, uuid);
     }
+
     await this.fetcher.anonymousUser(uuid, problemId);
   }
 
@@ -56,6 +58,7 @@ export class LocalStorageManager {
   async initOrUpdateTranslations(): Promise<void> {
     try {
       let translations = await this.getTranslations();
+
       if (!translations) {
         await this.set(this.translationsKey, {});
         translations = await this.getTranslations();
@@ -66,10 +69,13 @@ export class LocalStorageManager {
 
       if (!versionLocal || versionLocal < versionAPI!) {
         const tIds = Object.keys(translations!);
+
         if (tIds.length) {
           const fetchedTranslations = await this.fetcher.translations(tIds);
+
           translations = await this.setTranslations(fetchedTranslations!, translations!);
         }
+
         await this.setTranslationsVersion(versionAPI);
       }
     } catch (e) {
@@ -83,6 +89,7 @@ export class LocalStorageManager {
   ): Promise<TranslationsMap | undefined> {
     try {
       const translationsToSave: TranslationsMap = {};
+
       for (const t of fetchedTranslations) {
         translationsToSave[t.id] = t;
       }
@@ -90,6 +97,7 @@ export class LocalStorageManager {
       translations = { ...translations, ...translationsToSave };
       await this.set(this.translationsKey, translations);
       console.log(`Переводы обновлены и сохранены в локальное хранилище`);
+
       return translations;
     } catch (e) {
       console.error(e);
@@ -109,8 +117,10 @@ export class LocalStorageManager {
       const keywords = await this.fetcher.keywords();
 
       const keywordsToSave: KeywordsMap = {};
+
       for (const k of keywords!) {
         const { id, rusName, description } = k;
+
         keywordsToSave[id] = { rusName, description };
       }
 

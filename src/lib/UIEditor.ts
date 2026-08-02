@@ -46,10 +46,13 @@ export class UIEditor {
 
   initProblemsetPage(topicBtnsEl: Element) {
     const a = document.createElement("a");
+
     a.href = "https://leetcode-to-russian-api.vercel.app/infopage/";
     a.target = "_blank";
     a.className = "relative LTR-custom-translations-btn";
+
     const div = document.createElement("div");
+
     div.className = "flex items-center space-x-2 whitespace-nowrap rounded-full px-4 py-[10px] pointer-event-none text-base leading-tight shadow-level2 dark:shadow-dark-level2";
     div.textContent = "Переводы";
     a.append(div);
@@ -63,6 +66,7 @@ export class UIEditor {
     ).previousElementSibling!;
 
     const toggler = document.createElement("div");
+
     toggler.className = "LTR-toggler relative inline-flex items-center justify-center text-caption px-2 py-1 gap-1 rounded-full";
     toggler.textContent = "EN | RU";
     bar.append(toggler);
@@ -82,21 +86,26 @@ export class UIEditor {
 
   saveImages() {
     this.descriptionImages = [];
+
     const imgs = this.engDescription.querySelectorAll("img");
 
     for (const img of imgs) {
       const imgPath: number[] = [];
 
       let tmpParent = img.parentNode as Element, tmpChild: Element = img, oneChildCnt = 0;
+
       while (tmpParent !== this.engDescription) {
         const tmpChildren = tmpParent.children;
+
         if (tmpChildren.length === 1) {
           imgPath.push(0);
           oneChildCnt++;
         } else {
           const index = Array.from(tmpChildren).indexOf(tmpChild);
+
           imgPath.push(index);
         }
+
         tmpChild = tmpParent;
         tmpParent = tmpParent.parentNode as Element;
       }
@@ -106,6 +115,7 @@ export class UIEditor {
       }
 
       const index = Array.from(tmpParent.children).indexOf(tmpChild);
+
       imgPath.push(index);
 
       this.descriptionImages.push({ img: img.cloneNode(true) as HTMLImageElement, imgPath: imgPath.reverse() });
@@ -115,12 +125,15 @@ export class UIEditor {
   async saveKeywords() {
     try {
       this.descriptionKeywords = {};
+
       const keywords = this.rusDescription.querySelectorAll("[data-keyword]");
+
       this.localKeywords = (await this.LSM.getKeywords())!;
 
       for (const keyword of keywords) {
         const id = (keyword as HTMLElement).dataset.keyword!;
         const k = this.localKeywords[id]!;
+
         this.descriptionKeywords[id] = { ...k, keywordElement: keyword };
       }
     } catch (e) {
@@ -137,6 +150,7 @@ export class UIEditor {
         const currDescription = document.querySelector(
           '[data-track-load="description_content"]'
         ) as HTMLElement;
+
         currTitle.textContent = this.rusTitle;
         currDescription.innerHTML = this.rusDescription.innerHTML;
         this.createListenersForKeywords(currDescription);
@@ -156,6 +170,7 @@ export class UIEditor {
     const currDescription = document.querySelector(
       '[data-track-load="description_content"]'
     ) as HTMLElement;
+
     currTitle.textContent = this.engTitle.textContent;
     this.rusDescription = this.rusDescription.cloneNode(true) as HTMLElement;
     currDescription.innerHTML = this.engDescription.innerHTML;
@@ -165,6 +180,7 @@ export class UIEditor {
   changeTitle() {
     const title = this.engTitle.cloneNode(true) as HTMLElement;
     const oldText = this.engTitle.textContent!;
+
     this.engTitle.textContent = oldText.split(" ")[0] + " " + this.rusTitle;
     this.rusTitle = this.engTitle.textContent;
     this.engTitle = title;
@@ -173,11 +189,14 @@ export class UIEditor {
   changeDescription() {
     const nonBlockTags = new Set(["STRONG", "EM", "B", "I", "U"]);
     const currKeywords = this.engDescription.querySelectorAll("[data-keyword]");
+
     for (const currK of currKeywords) {
       let textEl: Node = currK;
+
       while (!(textEl instanceof Text) && !nonBlockTags.has((textEl as Element).tagName)) {
         textEl = textEl.childNodes[0]!;
       }
+
       currK.replaceWith(textEl);
     }
 
@@ -185,14 +204,17 @@ export class UIEditor {
       const { img, imgPath } = descriptionImage;
 
       let parent: Element = this.rusDescription;
+
       for (let i = 0; i < imgPath.length - 1; i++) {
         parent = parent.children[imgPath[i]!]!;
       }
 
       const idx = imgPath.at(-1)!;
+
       if (parent !== this.rusDescription) {
         const textNodesCnt = Array.from(parent.childNodes)
-          .reduce((a, e) => a += e instanceof Text ? 1 : 0, 0);
+          .reduce((a, e) => a + (e instanceof Text ? 1 : 0), 0);
+
         parent.insertBefore(img, parent.childNodes[idx + textNodesCnt - 1] ?? null);
       } else {
         parent.insertBefore(img, parent.children[idx] ?? null);
@@ -200,6 +222,7 @@ export class UIEditor {
     }
 
     const description = this.engDescription.cloneNode(true) as HTMLElement;
+
     this.engDescription.innerHTML = this.rusDescription.innerHTML;
     this.rusDescription = this.engDescription;
     this.createListenersForKeywords(this.rusDescription);
@@ -211,13 +234,16 @@ export class UIEditor {
   createTooltipElement(rusName: string, description: string) {
     const relative = document.querySelector("#__next")!;
     const tooltip = document.createElement("div");
+
     tooltip.classList.add("tooltip-container");
 
     const tooltipTitle = document.createElement("div");
+
     tooltipTitle.classList.add("tooltip-title");
     tooltipTitle.textContent = rusName;
 
     const tooltipDescription = document.createElement("div");
+
     tooltipDescription.classList.add("tooltip-description");
     tooltipDescription.innerHTML = description;
 
@@ -238,6 +264,7 @@ export class UIEditor {
       const tooltipElement = this.createTooltipElement(rusName, description);
 
       let timer: ReturnType<typeof setTimeout>;
+
       keywordElement.addEventListener("pointerenter", () => {
         timer = setTimeout(() => {
           this.keywordListener(keywordElement, tooltipElement);
@@ -263,6 +290,7 @@ export class UIEditor {
     let tooltipY = keywordRect.top - tooltipRect.height - 10;
 
     if (tooltipX < 11) tooltipX = 11;
+
     if (tooltipY < 0) tooltipY = keywordRect.bottom + 10;
 
     tooltipElement.style.left = `${tooltipX}px`;
